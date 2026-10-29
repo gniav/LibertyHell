@@ -37,6 +37,7 @@
 
 # Crash reports
 sysinfo.txt
+TEAM_WORKFLOW.md
 crashlytics-build.properties
 
 # OS files
