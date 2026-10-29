@@ -9,7 +9,9 @@ namespace LibertyHell.GameLoop
     {
         public int Money { get; private set; }
         public int Blood { get; private set; }
-        public float RemainingSeconds { get; private set; }
+        private double remainingSeconds;
+        private double regenerationProgress;
+        public float RemainingSeconds => (float)remainingSeconds;
         public RunStatus Status { get; private set; }
         public RunParameters Parameters { get; private set; }
         public bool IsSpinInProgress { get; private set; }
@@ -17,6 +19,7 @@ namespace LibertyHell.GameLoop
 
         public RunState(RunParameters parameters) => Reset(parameters);
 
+        // Resource mutations and new spins are accepted only while Running.
         public bool CanSpendMoney(int amount)
         {
             if (amount <= 0)
@@ -47,6 +50,7 @@ namespace LibertyHell.GameLoop
             return true;
         }
 
+        // Begin before paying; apply any payout before EndSpin checks the balance.
         public bool BeginSpin()
         {
             if (Status != RunStatus.Running || IsSpinInProgress)
@@ -56,7 +60,8 @@ namespace LibertyHell.GameLoop
             return true;
         }
 
-        // Also use this when cancelling a spin, after applying any refund.
+        // Also use this when cancelling, after applying any refund while Running.
+        // If paused, the balance is checked on Resume. Terminal states clear the spin.
         public bool EndSpin()
         {
             if (!IsSpinInProgress)
@@ -103,10 +108,31 @@ namespace LibertyHell.GameLoop
             return true;
         }
 
+        public void Tick(float deltaTime)
+        {
+            if (float.IsNaN(deltaTime) || float.IsInfinity(deltaTime) || deltaTime < 0)
+                throw new ArgumentOutOfRangeException(nameof(deltaTime));
+            if (Status != RunStatus.Running || deltaTime == 0) return;
+
+            double elapsed = Math.Min((double)deltaTime, remainingSeconds);
+            remainingSeconds -= elapsed;
+            double accumulated = regenerationProgress + elapsed;
+            double intervals = Math.Floor(accumulated / Parameters.BloodRegenIntervalSeconds);
+            regenerationProgress = accumulated % Parameters.BloodRegenIntervalSeconds;
+            if (Parameters.BloodRegenAmount > 0 && intervals > 0)
+            {
+                double restored = intervals * Parameters.BloodRegenAmount;
+                Blood += (int)Math.Min(restored, Parameters.MaxBlood - Blood);
+            }
+            EvaluateOutcome();
+            Changed?.Invoke(this);
+        }
+
+        // Exhausted blood/time takes precedence over the goal, then zero money.
         private void EvaluateOutcome()
         {
             if (Status != RunStatus.Running) return;
-            if (Blood == 0 || RemainingSeconds <= 0) Status = RunStatus.Lost;
+            if (Blood == 0 || remainingSeconds <= 0) Status = RunStatus.Lost;
             else if (Money >= Parameters.MoneyGoal) Status = RunStatus.Won;
             else if (!IsSpinInProgress && Money == 0) Status = RunStatus.Lost;
             if (Status == RunStatus.Lost || Status == RunStatus.Won) IsSpinInProgress = false;
@@ -121,7 +147,8 @@ namespace LibertyHell.GameLoop
             Parameters = parameters;
             Money = parameters.StartingMoney;
             Blood = parameters.StartingBlood;
-            RemainingSeconds = parameters.DurationSeconds;
+            remainingSeconds = parameters.DurationSeconds;
+            regenerationProgress = 0;
             Status = RunStatus.Running;
             IsSpinInProgress = false;
             EvaluateOutcome();
