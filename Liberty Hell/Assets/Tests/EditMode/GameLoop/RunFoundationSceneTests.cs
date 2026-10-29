@@ -17,7 +17,7 @@ public class RunFoundationSceneTests
         Assert.IsNotNull(bootstrap.State);
         Assert.AreEqual(100, bootstrap.State.Money);
         bootstrap.ResetRun();
-        Assert.AreEqual(5, bootstrap.State.Blood);
+        Assert.AreEqual(100, bootstrap.State.Blood);
         yield return new ExitPlayMode();
     }
 }

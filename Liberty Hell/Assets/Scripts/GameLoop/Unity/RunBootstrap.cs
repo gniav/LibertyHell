@@ -19,6 +19,11 @@ namespace LibertyHell.GameLoop
             LogState();
         }
 
+        private void Update()
+        {
+            State?.Tick(Time.deltaTime);
+        }
+
         [ContextMenu("Reset Run")]
         public void ResetRun()
         {
