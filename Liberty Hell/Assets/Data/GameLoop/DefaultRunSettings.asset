@@ -13,7 +13,9 @@ MonoBehaviour:
   m_Name: DefaultRunSettings
   m_EditorClassIdentifier: 
   startingMoney: 100
-  startingBlood: 5
-  maxBlood: 10
-  moneyGoal: 1000
-  durationSeconds: 300
+  startingBlood: 100
+  maxBlood: 100
+  moneyGoal: 500
+  durationSeconds: 480
+  bloodRegenAmount: 1
+  bloodRegenIntervalSeconds: 5

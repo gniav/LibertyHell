@@ -32,7 +32,8 @@ namespace LibertyHell.GameLoop
         {
             // A default struct bypasses its constructor, so validate here too.
             parameters = new RunParameters(parameters.StartingMoney, parameters.StartingBlood,
-                parameters.MaxBlood, parameters.MoneyGoal, parameters.DurationSeconds);
+                parameters.MaxBlood, parameters.MoneyGoal, parameters.DurationSeconds,
+                parameters.BloodRegenAmount, parameters.BloodRegenIntervalSeconds);
             Parameters = parameters;
             Money = parameters.StartingMoney;
             Blood = parameters.StartingBlood;
