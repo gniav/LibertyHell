@@ -56,4 +56,54 @@ public class RunStateTests
         Assert.AreEqual(1, state.Money);
         Assert.AreEqual(20f, state.RemainingSeconds);
     }
+
+    [Test]
+    public void SpinDefersMoneyLossUntilResultOrCancellation()
+    {
+        var state = new RunState(new RunParameters(10, 1, 2, 100, 30));
+        Assert.IsTrue(state.BeginSpin());
+        Assert.IsFalse(state.BeginSpin());
+        Assert.IsFalse(state.TrySpendMoney(11));
+        Assert.IsTrue(state.IsSpinInProgress);
+        Assert.IsTrue(state.TrySpendMoney(10));
+        Assert.AreEqual(RunStatus.Running, state.Status);
+        Assert.IsTrue(state.TryAddMoney(50));
+        Assert.IsTrue(state.EndSpin());
+        Assert.IsFalse(state.EndSpin());
+        Assert.AreEqual(RunStatus.Running, state.Status);
+        Assert.IsTrue(state.BeginSpin());
+        Assert.IsTrue(state.TrySpendMoney(50));
+        Assert.IsTrue(state.EndSpin());
+        Assert.AreEqual(RunStatus.Lost, state.Status);
+        Assert.IsFalse(state.Resume());
+    }
+
+    [Test]
+    public void ResourcesAreBoundedAndTerminalStatesCannotBeChanged()
+    {
+        var state = new RunState(new RunParameters(10, 2, 3, int.MaxValue, 30));
+        Assert.IsFalse(state.TryAddMoney(int.MaxValue));
+        Assert.Throws<ArgumentOutOfRangeException>(() => state.TryAddMoney(-1));
+        Assert.IsTrue(state.RestoreBlood(int.MaxValue));
+        Assert.AreEqual(3, state.Blood);
+        Assert.IsTrue(state.DamageBlood(int.MaxValue));
+        Assert.AreEqual(0, state.Blood);
+        Assert.AreEqual(RunStatus.Lost, state.Status);
+        Assert.IsFalse(state.TryAddMoney(1));
+        Assert.IsFalse(state.RestoreBlood(1));
+        Assert.IsFalse(state.Pause());
+    }
+
+    [Test]
+    public void GoalAndInitialConditionsHaveDeterministicPrecedence()
+    {
+        var state = new RunState(new RunParameters(5, 1, 1, 10, 30));
+        Assert.IsTrue(state.TryAddMoney(5));
+        Assert.AreEqual(RunStatus.Won, state.Status);
+        Assert.IsFalse(state.TryAddMoney(1));
+        state.Reset(new RunParameters(10, 0, 1, 10, 30));
+        Assert.AreEqual(RunStatus.Lost, state.Status);
+        state.Reset(new RunParameters(0, 1, 1, 10, 30));
+        Assert.AreEqual(RunStatus.Lost, state.Status);
+    }
 }
