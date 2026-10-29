@@ -16,6 +16,18 @@ namespace LibertyHell.GameLoop
 
         public RunState(RunParameters parameters) => Reset(parameters);
 
+        public bool TrySpendMoney(int amount)
+        {
+            if (amount <= 0)
+                throw new ArgumentOutOfRangeException(nameof(amount));
+            if (amount > Money)
+                return false;
+
+            Money -= amount;
+            Changed?.Invoke(this);
+            return true;
+        }
+
         public void Reset(RunParameters parameters)
         {
             // A default struct bypasses its constructor, so validate here too.

@@ -35,6 +35,20 @@ public class RunStateTests
     }
 
     [Test]
+    public void SpendingMoneyNotifiesOnlyAfterSuccessfulPayment()
+    {
+        var state = new RunState(new RunParameters(10, 1, 2, 20, 30));
+        int calls = 0;
+        state.Changed += changed => { calls++; Assert.AreEqual(6, changed.Money); };
+
+        Assert.IsTrue(state.TrySpendMoney(4));
+        Assert.IsFalse(state.TrySpendMoney(7));
+        Assert.Throws<ArgumentOutOfRangeException>(() => state.TrySpendMoney(0));
+        Assert.AreEqual(6, state.Money);
+        Assert.AreEqual(1, calls);
+    }
+
+    [Test]
     public void InvalidParametersCannotResetState()
     {
         var state = new RunState(new RunParameters(1, 1, 2, 10, 20));
