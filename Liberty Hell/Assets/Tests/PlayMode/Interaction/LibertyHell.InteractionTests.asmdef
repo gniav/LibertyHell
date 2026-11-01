@@ -1,0 +1,9 @@
+{
+  "name": "LibertyHell.InteractionTests",
+  "references": [
+    "LibertyHell.Interaction"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}
