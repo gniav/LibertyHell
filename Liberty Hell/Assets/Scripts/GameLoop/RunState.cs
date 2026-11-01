@@ -50,6 +50,37 @@ namespace LibertyHell.GameLoop
             return true;
         }
 
+        // Payment and the deferred balance check become visible together.
+        public bool TryBeginPaidSpin(int stake)
+        {
+            if (stake <= 0) throw new ArgumentOutOfRangeException(nameof(stake));
+            if (IsSpinInProgress || !CanSpendMoney(stake)) return false;
+            IsSpinInProgress = true;
+            Money -= stake;
+            Changed?.Invoke(this);
+            return true;
+        }
+
+        // Apply all effects before deciding the outcome or notifying observers.
+        public bool TryCompletePaidSpin(int payout, int bloodLoss, int nextStake)
+        {
+            if (payout < 0) throw new ArgumentOutOfRangeException(nameof(payout));
+            if (bloodLoss < 0) throw new ArgumentOutOfRangeException(nameof(bloodLoss));
+            if (nextStake <= 0) throw new ArgumentOutOfRangeException(nameof(nextStake));
+            if (Status != RunStatus.Running || !IsSpinInProgress || payout > int.MaxValue - Money)
+                return false;
+
+            Money += payout;
+            Blood = Math.Max(0, Blood - bloodLoss);
+            IsSpinInProgress = false;
+            if (Money >= Parameters.MoneyGoal) Status = RunStatus.Won;
+            else if (Blood == 0) Status = RunStatus.Lost;
+            else if (remainingSeconds <= 0) Status = RunStatus.Lost;
+            else if (Money < nextStake) Status = RunStatus.Lost;
+            Changed?.Invoke(this);
+            return true;
+        }
+
         // Begin before paying; apply any payout before EndSpin checks the balance.
         public bool BeginSpin()
         {

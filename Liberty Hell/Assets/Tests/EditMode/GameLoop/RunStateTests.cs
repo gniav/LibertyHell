@@ -5,6 +5,49 @@ using NUnit.Framework;
 public class RunStateTests
 {
     [Test]
+    public void PaidSpinAppliesAllEffectsBeforeChoosingOutcome()
+    {
+        var state = new RunState(new RunParameters(10, 1, 1, 50, 20));
+        Assert.IsTrue(state.TryBeginPaidSpin(10));
+        Assert.AreEqual(0, state.Money);
+        Assert.AreEqual(RunStatus.Running, state.Status);
+        Assert.IsFalse(state.TryBeginPaidSpin(10));
+        Assert.IsTrue(state.TryCompletePaidSpin(50, 1, 10));
+        Assert.AreEqual(0, state.Blood);
+        Assert.AreEqual(50, state.Money);
+        Assert.AreEqual(RunStatus.Won, state.Status);
+        Assert.IsFalse(state.TryCompletePaidSpin(50, 0, 10));
+    }
+
+    [Test]
+    public void PaidSpinRequiresFundsAndChecksNextStakeAfterResult()
+    {
+        var state = new RunState(new RunParameters(15, 1, 1, 100, 20));
+        Assert.IsTrue(state.TryBeginPaidSpin(10));
+        Assert.IsTrue(state.TryCompletePaidSpin(0, 0, 10));
+        Assert.AreEqual(RunStatus.Lost, state.Status);
+        state.Reset(new RunParameters(9, 1, 1, 100, 20));
+        Assert.IsFalse(state.TryBeginPaidSpin(10));
+        Assert.AreEqual(9, state.Money);
+        Assert.IsFalse(state.IsSpinInProgress);
+    }
+
+    [Test]
+    public void PaidSpinRejectsResultAfterTimeoutOrOverflow()
+    {
+        var state = new RunState(new RunParameters(10, 1, 1, int.MaxValue, 20));
+        Assert.IsTrue(state.TryBeginPaidSpin(10));
+        state.Tick(20);
+        Assert.IsFalse(state.TryCompletePaidSpin(100, 0, 10));
+        Assert.AreEqual(RunStatus.Lost, state.Status);
+        state.Reset(new RunParameters(20, 1, 1, int.MaxValue, 20));
+        Assert.IsTrue(state.TryBeginPaidSpin(10));
+        Assert.IsFalse(state.TryCompletePaidSpin(int.MaxValue, 0, 10));
+        Assert.AreEqual(10, state.Money);
+        Assert.IsTrue(state.IsSpinInProgress);
+    }
+
+    [Test]
     public void InitializesFromSnapshot()
     {
         var state = new RunState(new RunParameters(42, 3, 8, 500, 90));
