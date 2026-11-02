@@ -1,0 +1,6 @@
+{
+  "name": "LibertyHell.UITests",
+  "references": ["LibertyHell.Runtime", "LibertyHell.UI", "LibertyHell.Interaction"],
+  "optionalUnityReferences": ["TestAssemblies"],
+  "includePlatforms": ["Editor"]
+}

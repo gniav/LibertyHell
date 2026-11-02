@@ -1,0 +1,5 @@
+{
+  "name": "LibertyHell.UI",
+  "rootNamespace": "LibertyHell.UI",
+  "references": ["LibertyHell.Runtime", "LibertyHell.Interaction", "Unity.InputSystem"]
+}
