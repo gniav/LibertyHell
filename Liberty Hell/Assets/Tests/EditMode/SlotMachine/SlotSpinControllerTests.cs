@@ -97,9 +97,11 @@ public class SlotSpinControllerTests
         var run = new RunState(parameters);
         Assert.IsTrue(run.Shop.TryPurchase(ItemId.Guarantee).Success);
         bool observedPayment = false;
+        bool observedConsumption = false;
         run.Changed += state =>
         {
-            if (!state.IsSpinInProgress || observedPayment) return;
+            if (!state.IsSpinInProgress) return;
+            if (observedPayment) { observedConsumption = !state.Inventory.HasPendingGuarantee; return; }
             observedPayment = true;
             Assert.AreEqual(10, state.Money);
             Assert.IsTrue(state.Inventory.HasPendingGuarantee);
@@ -108,6 +110,7 @@ public class SlotSpinControllerTests
         using var slot = new SlotSpinController(run, Machine(new FixedRandom()));
         Assert.IsTrue(slot.TryInteract(out long oldId));
         Assert.IsTrue(observedPayment);
+        Assert.IsTrue(observedConsumption);
         Assert.IsFalse(run.Inventory.HasPendingGuarantee);
         run.Reset(parameters);
         Assert.IsFalse(slot.PendingResult.HasValue);

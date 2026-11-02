@@ -32,6 +32,7 @@ namespace LibertyHell.GameLoop
         }
 
         private void Publish() { revision++; Changed?.Invoke(this); }
+        internal void NotifySpinItemChanges() => Publish();
 
         ShopEconomySnapshot IShopEconomy.Read() => new ShopEconomySnapshot(revision, Money, Blood,
             Parameters.MaxBlood, SlotSpinController.Stake, Status == RunStatus.Running && !IsSpinInProgress && !committingPurchase);

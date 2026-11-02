@@ -66,6 +66,16 @@ namespace LibertyHell.SlotMachine
             try
             {
                 spinEffects = run.Inventory.ConfirmSpinStarted(Guid.NewGuid());
+                if (spinEffects.GuaranteedXXX)
+                {
+                    run.NotifySpinItemChanges();
+                    if (disposed || run.Status != RunStatus.Running || !run.IsSpinInProgress)
+                    {
+                        phase = SlotInteractionState.Ready;
+                        if (run.IsSpinInProgress) run.EndSpin();
+                        return false;
+                    }
+                }
                 var result = machine != null ? machine.Spin(spinEffects) : generateResult();
                 if (result.MoneyPayout < 0 || result.BloodLoss < 0)
                     throw new InvalidOperationException("The spin result contains negative effects.");
