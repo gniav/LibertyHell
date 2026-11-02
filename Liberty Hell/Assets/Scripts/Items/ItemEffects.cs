@@ -4,7 +4,7 @@ using LibertyHell.SlotMachine;
 
 namespace LibertyHell.Items
 {
-    // Immutable spin-specific values. Percentage calculations floor fractions.
+    // Immutable spin-specific values. Blood-loss fractions round down.
     public readonly struct ItemEffects
     {
         public bool HasLure { get; }
@@ -25,7 +25,8 @@ namespace LibertyHell.Items
         public int GetEffectiveBetCost(int baseCost)
         {
             if (baseCost < 0) throw new ArgumentOutOfRangeException(nameof(baseCost));
-            return HasDiscount ? (int)((long)baseCost * 7 / 10) : baseCost;
+            long rounded = HasDiscount ? ((long)baseCost * 7 + 5) / 10 : baseCost;
+            return (int)Math.Max(1L, rounded);
         }
         public int GetEffectiveLosingBloodLoss(int baseLoss)
         {
