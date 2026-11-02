@@ -1,4 +1,5 @@
 using System;
+using LibertyHell.Items;
 
 namespace LibertyHell.SlotMachine
 {
@@ -45,6 +46,23 @@ namespace LibertyHell.SlotMachine
         /// <exception cref="InvalidOperationException"></exception>
         public SlotResult Spin() => Evaluate(ChooseSymbol(), ChooseSymbol(), ChooseSymbol());
 
+        internal SlotResult Spin(ItemEffects effects)
+        {
+            if (effects.GuaranteedXXX) return Evaluate(SlotSymbol.X, SlotSymbol.X, SlotSymbol.X);
+            if (!effects.HasLure) return Spin();
+            var adjusted = new int[weights.Length];
+            long total = 0;
+            for (int i = 0; i < weights.Length; i++)
+            {
+                long weight = (long)weights[i] * (i == (int)SlotSymbol.X || i == (int)SlotSymbol.Y ? 3 : 2);
+                total += weight;
+                if (weight > int.MaxValue || total > int.MaxValue)
+                    throw new InvalidOperationException("Lure-adjusted weights exceed the random source range.");
+                adjusted[i] = (int)weight;
+            }
+            return Evaluate(ChooseSymbol(adjusted, (int)total), ChooseSymbol(adjusted, (int)total), ChooseSymbol(adjusted, (int)total));
+        }
+
         /// <summary>
         /// Определяет выплату и потерю крови для трёх символов.
         /// </summary>
@@ -78,7 +96,9 @@ namespace LibertyHell.SlotMachine
         /// </summary>
         /// <returns></returns>
         /// <exception cref="InvalidOperationException"></exception>
-        private SlotSymbol ChooseSymbol()
+        private SlotSymbol ChooseSymbol() => ChooseSymbol(weights, totalWeight);
+
+        private SlotSymbol ChooseSymbol(int[] weights, int totalWeight)
         {
             int value = random.Next(totalWeight);
             if (value < 0 || value >= totalWeight)

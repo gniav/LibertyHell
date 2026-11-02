@@ -54,8 +54,8 @@ public class ShopServiceTests
         Assert.AreEqual(10f, effects.GetEffectiveWeight(SlotSymbol.A, 10));
         Assert.AreEqual(15f, inventory.CurrentEffects.GetEffectiveWeight(SlotSymbol.X, 10));
         Assert.AreEqual(7, effects.GetEffectiveBetCost(10));
-        Assert.AreEqual(0, effects.GetEffectiveBetCost(1));
-        Assert.AreEqual((int)((long)int.MaxValue * 7 / 10), effects.GetEffectiveBetCost(int.MaxValue));
+        Assert.AreEqual(1, effects.GetEffectiveBetCost(1));
+        Assert.AreEqual((int)(((long)int.MaxValue * 7 + 5) / 10), effects.GetEffectiveBetCost(int.MaxValue));
         Assert.AreEqual(2, effects.GetEffectiveLosingBloodLoss(5));
         foreach (var id in new[] { ItemId.Lure, ItemId.Discount, ItemId.Protection })
             Assert.AreEqual(PurchaseCode.AlreadyPurchased, shop.TryPurchase(id).Code);
@@ -66,6 +66,14 @@ public class ShopServiceTests
         Assert.AreEqual(10, inventory.CurrentEffects.GetEffectiveBetCost(10));
         Assert.AreEqual(5, inventory.CurrentEffects.GetEffectiveLosingBloodLoss(5));
         Assert.IsTrue(shop.TryPurchase(ItemId.Lure).Success);
+    }
+
+    [TestCase(0, 1)] [TestCase(1, 1)] [TestCase(2, 1)]
+    [TestCase(3, 2)] [TestCase(5, 4)] [TestCase(10, 7)] [TestCase(15, 11)]
+    public void DiscountedBetRoundsToNearestAwayFromZeroWithMinimumOne(int original, int expected)
+    {
+        Assert.IsTrue(shop.TryPurchase(ItemId.Discount).Success);
+        Assert.AreEqual(expected, inventory.CurrentEffects.GetEffectiveBetCost(original));
     }
 
     [Test]

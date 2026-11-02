@@ -1,5 +1,6 @@
 using System;
 using LibertyHell.GameLoop;
+using LibertyHell.Items;
 
 namespace LibertyHell.SlotMachine
 {
@@ -11,6 +12,8 @@ namespace LibertyHell.SlotMachine
         public const int Stake = 10;
         private readonly RunState run;
         private readonly Func<SlotResult> generateResult;
+        private readonly SlotMachine machine;
+        private ItemEffects spinEffects;
         private SlotInteractionState phase = SlotInteractionState.Ready;
         private SlotResult? pendingResult;
         private long nextSpinId;
@@ -18,7 +21,8 @@ namespace LibertyHell.SlotMachine
         private bool disposed;
 
         public SlotSpinController(RunState run, SlotMachine machine)
-            : this(run, machine == null ? throw new ArgumentNullException(nameof(machine)) : (Func<SlotResult>)machine.Spin) { }
+            : this(run, machine == null ? throw new ArgumentNullException(nameof(machine)) : (Func<SlotResult>)machine.Spin)
+        { this.machine = machine; }
 
         public SlotSpinController(RunState run, Func<SlotResult> generateResult)
         {
@@ -29,7 +33,16 @@ namespace LibertyHell.SlotMachine
 
         public SlotInteractionState State => disposed || run.Status != RunStatus.Running
             ? SlotInteractionState.Unavailable : phase;
-        public bool CanInteract => State == SlotInteractionState.Ready && !run.IsSpinInProgress && run.CanSpendMoney(Stake);
+        public bool CanInteract
+        {
+            get
+            {
+                var effects = run.Inventory.CurrentEffects;
+                return State == SlotInteractionState.Ready && !run.IsSpinInProgress &&
+                    (machine != null || (!effects.HasLure && !effects.GuaranteedXXX)) &&
+                    run.CanSpendMoney(effects.GetEffectiveBetCost(Stake));
+            }
+        }
         public SlotResult? PendingResult => phase == SlotInteractionState.Spinning ? pendingResult : null;
 
         public bool TryInteract(out long spinId)
@@ -37,7 +50,8 @@ namespace LibertyHell.SlotMachine
             spinId = 0;
             if (!CanInteract) return false;
             phase = SlotInteractionState.Applying; // Blocks reentry during payment and generation.
-            if (!run.TryBeginPaidSpin(Stake))
+            int price = run.Inventory.CurrentEffects.GetEffectiveBetCost(Stake);
+            if (!run.TryBeginPaidSpin(price))
             {
                 phase = SlotInteractionState.Ready;
                 return false;
@@ -51,7 +65,18 @@ namespace LibertyHell.SlotMachine
 
             try
             {
-                var result = generateResult();
+                spinEffects = run.Inventory.ConfirmSpinStarted(Guid.NewGuid());
+                if (spinEffects.GuaranteedXXX)
+                {
+                    run.NotifySpinItemChanges();
+                    if (disposed || run.Status != RunStatus.Running || !run.IsSpinInProgress)
+                    {
+                        phase = SlotInteractionState.Ready;
+                        if (run.IsSpinInProgress) run.EndSpin();
+                        return false;
+                    }
+                }
+                var result = machine != null ? machine.Spin(spinEffects) : generateResult();
                 if (result.MoneyPayout < 0 || result.BloodLoss < 0)
                     throw new InvalidOperationException("The spin result contains negative effects.");
                 if (disposed || run.Status != RunStatus.Running || !run.IsSpinInProgress)
@@ -81,7 +106,8 @@ namespace LibertyHell.SlotMachine
                 return false;
             var result = pendingResult.Value;
             phase = SlotInteractionState.Applying;
-            if (!run.TryCompletePaidSpin(result.MoneyPayout, result.BloodLoss, Stake))
+            if (!run.TryCompletePaidSpin(result.MoneyPayout, spinEffects.GetEffectiveLosingBloodLoss(result.BloodLoss),
+                run.Inventory.CurrentEffects.GetEffectiveBetCost(Stake)))
             {
                 phase = SlotInteractionState.Spinning;
                 return false;

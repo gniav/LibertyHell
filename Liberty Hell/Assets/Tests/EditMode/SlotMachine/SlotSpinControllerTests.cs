@@ -1,9 +1,124 @@
 using LibertyHell.GameLoop;
 using LibertyHell.SlotMachine;
 using NUnit.Framework;
+using LibertyHell.Items;
 
 public class SlotSpinControllerTests
 {
+    private sealed class FixedRandom : ISlotRandom
+    {
+        public int Value, Calls, LastMax;
+        public int Next(int exclusiveMax) { Calls++; LastMax = exclusiveMax; return Value; }
+    }
+    private static LibertyHell.SlotMachine.SlotMachine Machine(ISlotRandom random) =>
+        new LibertyHell.SlotMachine.SlotMachine(new SlotRules(new[] { 40, 30, 12, 12, 6 },
+            new[] { 30, 50, 100, 150 }, 15, 20), random);
+
+    [Test]
+    public void AllItemsApplyInOrderAndGuaranteeIsUsedOnlyOnce()
+    {
+        var run = new RunState(new RunParameters(14, 200, 200, 1000, 20));
+        foreach (var item in new[] { ItemId.Lure, ItemId.Discount, ItemId.Protection, ItemId.Guarantee })
+            Assert.IsTrue(run.Shop.TryPurchase(item).Success);
+        var random = new FixedRandom { Value = 223 };
+        using var slot = new SlotSpinController(run, Machine(random));
+        Assert.IsTrue(slot.TryInteract(out long first));
+        Assert.AreEqual(7, run.Money);
+        Assert.AreEqual(0, random.Calls);
+        Assert.IsFalse(run.Inventory.HasPendingGuarantee);
+        Assert.AreEqual(SlotSymbol.X, slot.PendingResult.Value.First);
+        Assert.AreEqual(100, slot.PendingResult.Value.MoneyPayout);
+        Assert.IsTrue(slot.TryCompleteSpin(first));
+        Assert.AreEqual(107, run.Money);
+        Assert.IsFalse(slot.TryCompleteSpin(first));
+        Assert.IsTrue(slot.TryInteract(out long second));
+        Assert.AreEqual(224, random.LastMax);
+        Assert.AreEqual(3, random.Calls);
+        Assert.AreEqual(SlotSymbol.H, slot.PendingResult.Value.First);
+        int blood = run.Blood;
+        Assert.IsTrue(slot.TryCompleteSpin(second));
+        Assert.AreEqual(blood - 10, run.Blood);
+        Assert.IsTrue(run.DamageBlood(3));
+        Assert.AreEqual(blood - 13, run.Blood);
+    }
+
+    [Test]
+    public void RejectedStartDoesNotConsumeGuaranteeOrChooseSymbols()
+    {
+        var run = new RunState(new RunParameters(6, 100, 100, 1000, 20));
+        Assert.IsTrue(run.Shop.TryPurchase(ItemId.Discount).Success);
+        Assert.IsTrue(run.Shop.TryPurchase(ItemId.Guarantee).Success);
+        var random = new FixedRandom();
+        using var slot = new SlotSpinController(run, Machine(random));
+        Assert.IsFalse(slot.TryInteract(out _));
+        Assert.IsTrue(run.Inventory.HasPendingGuarantee);
+        Assert.AreEqual(0, random.Calls);
+        Assert.IsTrue(run.TryAddMoney(1));
+        Assert.IsTrue(slot.TryInteract(out long id));
+        Assert.AreEqual(0, run.Money);
+        Assert.IsFalse(slot.TryInteract(out _));
+        Assert.IsTrue(slot.TryCompleteSpin(id));
+    }
+
+    [Test]
+    public void LegacyResultDelegateCannotBypassGuarantee()
+    {
+        var run = new RunState(new RunParameters(20, 100, 100, 1000, 20));
+        Assert.IsTrue(run.Shop.TryPurchase(ItemId.Guarantee).Success);
+        int calls = 0;
+        using var slot = new SlotSpinController(run, () => { calls++; return Result(0); });
+        Assert.IsFalse(slot.CanInteract);
+        Assert.IsFalse(slot.TryInteract(out _));
+        Assert.AreEqual(20, run.Money);
+        Assert.IsTrue(run.Inventory.HasPendingGuarantee);
+        Assert.AreEqual(0, calls);
+    }
+
+    [Test]
+    public void LureChangesWeightedSelectionWithoutChangingBaseSampling()
+    {
+        var random = new FixedRandom { Value = 82 };
+        var machine = Machine(random);
+        Assert.AreEqual(SlotSymbol.Y, machine.Spin().First);
+        Assert.AreEqual(100, random.LastMax);
+        var run = new RunState(new RunParameters(20, 100, 100, 1000, 20));
+        Assert.IsTrue(run.Shop.TryPurchase(ItemId.Lure).Success);
+        random.Value = 165;
+        using var slot = new SlotSpinController(run, machine);
+        Assert.IsTrue(slot.TryInteract(out _));
+        Assert.AreEqual(224, random.LastMax);
+        Assert.AreEqual(SlotSymbol.X, slot.PendingResult.Value.First);
+    }
+
+    [Test]
+    public void PaymentPrecedesConsumptionAndResetDiscardsResultAndItems()
+    {
+        var parameters = new RunParameters(20, 100, 100, 1000, 20);
+        var run = new RunState(parameters);
+        Assert.IsTrue(run.Shop.TryPurchase(ItemId.Guarantee).Success);
+        bool observedPayment = false;
+        bool observedConsumption = false;
+        run.Changed += state =>
+        {
+            if (!state.IsSpinInProgress) return;
+            if (observedPayment) { observedConsumption = !state.Inventory.HasPendingGuarantee; return; }
+            observedPayment = true;
+            Assert.AreEqual(10, state.Money);
+            Assert.IsTrue(state.Inventory.HasPendingGuarantee);
+            Assert.IsFalse(state.Shop.TryPurchase(ItemId.Lure).Success);
+        };
+        using var slot = new SlotSpinController(run, Machine(new FixedRandom()));
+        Assert.IsTrue(slot.TryInteract(out long oldId));
+        Assert.IsTrue(observedPayment);
+        Assert.IsTrue(observedConsumption);
+        Assert.IsFalse(run.Inventory.HasPendingGuarantee);
+        run.Reset(parameters);
+        Assert.IsFalse(slot.PendingResult.HasValue);
+        Assert.IsFalse(slot.TryCompleteSpin(oldId));
+        Assert.IsTrue(slot.TryInteract(out long newId));
+        Assert.IsTrue(slot.TryCompleteSpin(newId));
+        Assert.AreEqual(40, run.Money);
+    }
     private static RunState Run(int money = 10, int blood = 2, int goal = 100) =>
         new RunState(new RunParameters(money, blood, blood, goal, 20));
 
@@ -65,7 +180,7 @@ public class SlotSpinControllerTests
 
     [TestCase(true)]
     [TestCase(false)]
-    public void TerminalRunCancelsPendingResult(bool timeout)
+    public void FatalEventsDuringPaidSpinWaitForCompletion(bool timeout)
     {
         var run = Run();
         using var slot = new SlotSpinController(run, () => Result(100, 1));
@@ -73,13 +188,13 @@ public class SlotSpinControllerTests
         if (timeout) run.Tick(20); else run.DamageBlood(2);
         int blood = run.Blood;
         float time = run.RemainingSeconds;
-        Assert.AreEqual(RunStatus.Lost, run.Status);
-        Assert.AreEqual(SlotInteractionState.Unavailable, slot.State);
-        Assert.IsFalse(slot.PendingResult.HasValue);
+        Assert.AreEqual(RunStatus.Running, run.Status);
+        Assert.AreEqual(SlotInteractionState.Spinning, slot.State);
+        Assert.IsTrue(slot.PendingResult.HasValue);
+        Assert.IsTrue(slot.TryCompleteSpin(id));
         Assert.IsFalse(slot.TryCompleteSpin(id));
-        Assert.IsFalse(slot.TryCompleteSpin(id));
-        Assert.AreEqual(0, run.Money);
-        Assert.AreEqual(blood, run.Blood);
+        Assert.AreEqual(100, run.Money);
+        Assert.AreEqual(System.Math.Max(0, blood - 1), run.Blood);
         Assert.AreEqual(time, run.RemainingSeconds);
     }
 
@@ -108,16 +223,18 @@ public class SlotSpinControllerTests
     }
 
     [Test]
-    public void RunEndingDuringPaymentPreventsResultGeneration()
+    public void TimeoutDuringPaymentWaitsForResult()
     {
         var run = Run();
         int generated = 0;
         using var slot = new SlotSpinController(run, () => { generated++; return Result(20); });
-        run.Changed += state => { if (state.IsSpinInProgress) state.Tick(20); };
-        Assert.IsFalse(slot.TryInteract(out _));
-        Assert.AreEqual(0, generated);
+        bool timedOut = false;
+        run.Changed += state => { if (state.IsSpinInProgress && !timedOut) { timedOut = true; state.Tick(20); } };
+        Assert.IsTrue(slot.TryInteract(out long id));
+        Assert.AreEqual(1, generated);
+        Assert.AreEqual(RunStatus.Running, run.Status);
+        Assert.IsTrue(slot.TryCompleteSpin(id));
         Assert.AreEqual(RunStatus.Lost, run.Status);
-        Assert.IsFalse(slot.PendingResult.HasValue);
     }
 
     [Test]

@@ -33,18 +33,48 @@ public class RunStateTests
     }
 
     [Test]
-    public void PaidSpinRejectsResultAfterTimeoutOrOverflow()
+    public void PaidSpinDefersTimeoutAndRejectsOverflow()
     {
         var state = new RunState(new RunParameters(10, 1, 1, int.MaxValue, 20));
         Assert.IsTrue(state.TryBeginPaidSpin(10));
         state.Tick(20);
-        Assert.IsFalse(state.TryCompletePaidSpin(100, 0, 10));
+        Assert.AreEqual(RunStatus.Running, state.Status);
+        Assert.IsTrue(state.TryCompletePaidSpin(1, 0, 10));
         Assert.AreEqual(RunStatus.Lost, state.Status);
         state.Reset(new RunParameters(20, 1, 1, int.MaxValue, 20));
         Assert.IsTrue(state.TryBeginPaidSpin(10));
         Assert.IsFalse(state.TryCompletePaidSpin(int.MaxValue, 0, 10));
         Assert.AreEqual(10, state.Money);
         Assert.IsTrue(state.IsSpinInProgress);
+    }
+
+    [Test]
+    public void PurchaseIsAtomicAndResetClearsInventory()
+    {
+        var state = new RunState(new RunParameters(100, 100, 100, 1000, 20));
+        var economy = (LibertyHell.Shop.IShopEconomy)state;
+        var old = economy.Read();
+        int calls = 0;
+        state.Changed += changed =>
+        {
+            calls++;
+            Assert.AreEqual(75, changed.Blood);
+            Assert.IsTrue(changed.Inventory.CurrentEffects.HasProtection);
+            Assert.IsFalse(changed.TrySpendMoney(1));
+        };
+        Assert.IsTrue(state.Shop.TryPurchase(LibertyHell.Items.ItemId.Protection).Success);
+        Assert.AreEqual(1, calls);
+        Assert.IsFalse(economy.TryCommit(old.Revision, 1, 1, () => Assert.Fail("stale grant")));
+    }
+
+    [Test]
+    public void ResetClearsRunItems()
+    {
+        var parameters = new RunParameters(100, 100, 100, 1000, 20);
+        var state = new RunState(parameters);
+        Assert.IsTrue(state.Shop.TryPurchase(LibertyHell.Items.ItemId.Guarantee).Success);
+        state.Reset(parameters);
+        Assert.IsFalse(state.Inventory.HasPendingGuarantee);
     }
 
     [Test]
