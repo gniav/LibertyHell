@@ -204,6 +204,8 @@ namespace LibertyHell.UI
         {
             GUILayout.BeginArea(new Rect(Screen.width / 2f - 180, Screen.height / 2f - 100, 360, 200), GUI.skin.box);
             GUILayout.Label(run.Status == RunStatus.Won ? "Победа" : "Поражение");
+            if (!string.IsNullOrEmpty(spinMessage))
+                GUILayout.Label(spinMessage);
             if (run.Status == RunStatus.Lost)
                 GUILayout.Label(LossReason());
             if (GUILayout.Button("Начать заново")) Restart();
