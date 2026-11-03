@@ -2,6 +2,7 @@ using System.Collections;
 using LibertyHell.GameLoop;
 using LibertyHell.Interaction;
 using LibertyHell.Items;
+using LibertyHell.SlotMachine;
 using LibertyHell.UI;
 using NUnit.Framework;
 using UnityEditor.SceneManagement;
@@ -10,6 +11,30 @@ using UnityEngine.TestTools;
 
 public class GameUITests
 {
+    [UnityTest]
+    public IEnumerator SpinMessageUsesAppliedBloodLoss()
+    {
+        EditorSceneManager.OpenScene("Assets/Tests/UI/GameUIDemo.unity");
+        yield return new EnterPlayMode();
+        yield return null;
+        var ui = Object.FindFirstObjectByType<GameUI>();
+        var run = Object.FindFirstObjectByType<RunBootstrap>().State;
+        Assert.IsTrue(run.Shop.TryPurchase(ItemId.Protection).Success);
+        using (var spin = new SlotSpinController(run, () =>
+            new SlotResult(SlotSymbol.H, SlotSymbol.H, SlotSymbol.H, 0, 20)))
+        {
+            Assert.IsTrue(spin.TryInteract(out long id));
+            int before = run.Blood;
+            Assert.IsTrue(spin.TryCompleteSpin(id, out var applied));
+            ui.ShowSpinResult(applied);
+            var message = typeof(GameUI).GetField("spinMessage", System.Reflection.BindingFlags.Instance |
+                System.Reflection.BindingFlags.NonPublic).GetValue(ui) as string;
+            Assert.AreEqual(10, before - run.Blood);
+            StringAssert.Contains("кровь -10", message);
+        }
+        yield return new ExitPlayMode();
+    }
+
     /// <summary>
     /// Проверяет открытие магазина и переходы в паузу на тестовой сцене.
     /// </summary>

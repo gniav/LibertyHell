@@ -34,6 +34,12 @@ namespace LibertyHell.SlotMachine
 
         public bool TryCompleteSpin(long spinId) => controller != null && controller.TryCompleteSpin(spinId);
 
+        public bool TryCompleteSpin(long spinId, out AppliedSpinResult appliedResult)
+        {
+            appliedResult = default;
+            return controller != null && controller.TryCompleteSpin(spinId, out appliedResult);
+        }
+
         private void OnDestroy()
         {
             controller?.Dispose();

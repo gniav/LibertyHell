@@ -99,19 +99,25 @@ namespace LibertyHell.SlotMachine
             }
         }
 
-        public bool TryCompleteSpin(long spinId)
+        public bool TryCompleteSpin(long spinId) => TryCompleteSpin(spinId, out _);
+
+        public bool TryCompleteSpin(long spinId, out AppliedSpinResult appliedResult)
         {
+            appliedResult = default;
             if (disposed || phase != SlotInteractionState.Spinning || spinId != activeSpinId ||
                 run.Status != RunStatus.Running || !run.IsSpinInProgress || !pendingResult.HasValue)
                 return false;
             var result = pendingResult.Value;
+            int bloodLoss = spinEffects.GetEffectiveLosingBloodLoss(result.BloodLoss);
+            int bloodLost = Math.Min(run.Blood, bloodLoss);
             phase = SlotInteractionState.Applying;
-            if (!run.TryCompletePaidSpin(result.MoneyPayout, spinEffects.GetEffectiveLosingBloodLoss(result.BloodLoss),
+            if (!run.TryCompletePaidSpin(result.MoneyPayout, bloodLoss,
                 run.Inventory.CurrentEffects.GetEffectiveBetCost(Stake)))
             {
                 phase = SlotInteractionState.Spinning;
                 return false;
             }
+            appliedResult = new AppliedSpinResult(result, bloodLost);
             pendingResult = null;
             activeSpinId = 0;
             phase = SlotInteractionState.Ready;
