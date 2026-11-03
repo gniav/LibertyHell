@@ -103,9 +103,10 @@ namespace LibertyHell.UI
         /// Отображает результат завершённого вращения.
         /// </summary>
         /// <param name="result"></param>
-        public void ShowSpinResult(SlotResult result)
+        public void ShowSpinResult(AppliedSpinResult appliedResult)
         {
-            spinMessage = $"{result.First} {result.Second} {result.Third}: +{result.MoneyPayout}, кровь -{result.BloodLoss}";
+            SlotResult result = appliedResult.Result;
+            spinMessage = $"{result.First} {result.Second} {result.Third}: +{result.MoneyPayout}, кровь -{appliedResult.BloodLost}";
         }
 
         /// <summary>

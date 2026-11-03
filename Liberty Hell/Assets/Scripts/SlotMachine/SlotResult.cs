@@ -25,4 +25,17 @@ namespace LibertyHell.SlotMachine
             BloodLoss = bloodLoss;
         }
     }
+
+    // Result reported after the spin has been applied to the run.
+    public readonly struct AppliedSpinResult
+    {
+        public SlotResult Result { get; }
+        public int BloodLost { get; }
+
+        public AppliedSpinResult(SlotResult result, int bloodLost)
+        {
+            Result = result;
+            BloodLost = bloodLost;
+        }
+    }
 }

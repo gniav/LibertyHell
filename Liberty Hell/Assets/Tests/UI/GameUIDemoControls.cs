@@ -30,7 +30,7 @@ public sealed class GameUIDemoControls : MonoBehaviour
         GUILayout.BeginArea(new Rect(20, 160, Mathf.Min(300, Screen.width - 40), 70), GUI.skin.box);
         GUILayout.Label("M — магазин, Escape — пауза");
         if (GUILayout.Button("Показать результат"))
-            gameUI.ShowSpinResult(new SlotResult(SlotSymbol.A, SlotSymbol.B, SlotSymbol.A, 15, 0));
+            gameUI.ShowSpinResult(new AppliedSpinResult(new SlotResult(SlotSymbol.A, SlotSymbol.B, SlotSymbol.A, 15, 0), 0));
         GUILayout.EndArea();
     }
 }

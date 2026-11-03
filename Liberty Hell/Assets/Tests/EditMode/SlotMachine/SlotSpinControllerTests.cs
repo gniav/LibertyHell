@@ -125,6 +125,25 @@ public class SlotSpinControllerTests
     private static SlotResult Result(int money, int blood = 0) =>
         new SlotResult(SlotSymbol.A, SlotSymbol.B, SlotSymbol.X, money, blood);
 
+    [TestCase(false, 100, 20)]
+    [TestCase(true, 100, 10)]
+    [TestCase(false, 5, 5)]
+    [TestCase(true, 30, 5)]
+    public void CompletedResultReportsActualBloodLost(bool protection, int startingBlood, int expectedLoss)
+    {
+        var run = new RunState(new RunParameters(100, startingBlood, 100, 1000, 20));
+        if (protection) Assert.IsTrue(run.Shop.TryPurchase(ItemId.Protection).Success);
+        using var slot = new SlotSpinController(run, () => Result(0, 20));
+        Assert.IsTrue(slot.TryInteract(out long spinId));
+        int bloodBefore = run.Blood;
+        Assert.IsFalse(slot.TryCompleteSpin(spinId + 1, out _));
+        Assert.IsTrue(slot.TryCompleteSpin(spinId, out var applied));
+        Assert.AreEqual(20, applied.Result.BloodLoss);
+        Assert.AreEqual(expectedLoss, applied.BloodLost);
+        Assert.AreEqual(expectedLoss, bloodBefore - run.Blood);
+        Assert.IsFalse(slot.TryCompleteSpin(spinId, out _));
+    }
+
     [Test]
     public void PaidSpinGeneratesOnceAndAppliesOnlyOnCompletion()
     {
