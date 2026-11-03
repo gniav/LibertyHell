@@ -1,0 +1,1 @@
+{"name":"LibertyHell.SceneIntegrationTests","references":["LibertyHell.Runtime","LibertyHell.Interaction","LibertyHell.UI","LibertyHell.SceneIntegration"],"optionalUnityReferences":["TestAssemblies"],"includePlatforms":["Editor"]}
