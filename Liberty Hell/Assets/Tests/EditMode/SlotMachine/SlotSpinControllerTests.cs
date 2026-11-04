@@ -300,4 +300,50 @@ public class SlotSpinControllerTests
         Assert.IsFalse(slot.TryCompleteSpin(id));
     }
 
+    [TestCase(0, RunStatus.Lost)]
+    [TestCase(7, RunStatus.Lost)]
+    [TestCase(10, RunStatus.Running)]
+    [TestCase(11, RunStatus.Running)]
+    public void CompletionChecksNextStakeAfterApplyingPayout(int payout, RunStatus expected)
+    {
+        var run = Run(10, 2, 100);
+        using var slot = new SlotSpinController(run, () => Result(payout, 1));
+        int terminalNotifications = 0;
+        run.Changed += state =>
+        {
+            if (state.Status == RunStatus.Won || state.Status == RunStatus.Lost)
+            {
+                terminalNotifications++;
+                Assert.AreEqual(payout, state.Money);
+                Assert.AreEqual(1, state.Blood);
+                Assert.IsFalse(state.IsSpinInProgress);
+            }
+        };
+        Assert.IsTrue(slot.TryInteract(out long id));
+        Assert.IsTrue(slot.TryCompleteSpin(id));
+        Assert.AreEqual(payout, run.Money);
+        Assert.AreEqual(1, run.Blood);
+        Assert.AreEqual(expected, run.Status);
+        Assert.IsFalse(slot.TryCompleteSpin(id));
+        Assert.AreEqual(expected == RunStatus.Lost ? 1 : 0, terminalNotifications);
+    }
+
+    [Test]
+    public void WinningResultTakesPriorityOverTimeoutAndBlood()
+    {
+        var run = Run(10, 1, 15);
+        using var slot = new SlotSpinController(run, () => Result(15, 1));
+        int terminalNotifications = 0;
+        run.Changed += state => { if (state.Status == RunStatus.Won || state.Status == RunStatus.Lost) terminalNotifications++; };
+        Assert.IsTrue(slot.TryInteract(out long id));
+        run.Tick(20);
+        Assert.IsTrue(slot.TryCompleteSpin(id));
+        Assert.AreEqual(15, run.Money);
+        Assert.AreEqual(0, run.Blood);
+        Assert.AreEqual(0, run.RemainingSeconds);
+        Assert.AreEqual(RunStatus.Won, run.Status);
+        Assert.IsFalse(slot.TryCompleteSpin(id));
+        Assert.AreEqual(1, terminalNotifications);
+    }
+
 }
