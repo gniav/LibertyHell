@@ -19,6 +19,8 @@ namespace LibertyHell.UI
         private string purchaseMessage = "";
         private string spinMessage = "";
         private Vector2 shopScroll;
+        private float uiWidth;
+        private float uiHeight;
 
         public event Action<bool> PauseChanged;
         public event Action RunRestarted;
@@ -118,15 +120,28 @@ namespace LibertyHell.UI
             if (run == null)
                 return;
 
-            if (!IsModalOpen)
-                DrawHud();
+            float scale = Mathf.Clamp(Screen.height / 900f, 1f, 3f);
+            uiWidth = Screen.width / scale;
+            uiHeight = Screen.height / scale;
+            Matrix4x4 previousMatrix = GUI.matrix;
+            GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
 
-            if (shopOpen)
-                DrawShop();
-            else if (run.Status == RunStatus.Paused)
-                DrawPause();
-            else if (run.Status == RunStatus.Won || run.Status == RunStatus.Lost)
-                DrawResult();
+            try
+            {
+                if (!IsModalOpen)
+                    DrawHud();
+
+                if (shopOpen)
+                    DrawShop();
+                else if (run.Status == RunStatus.Paused)
+                    DrawPause();
+                else if (run.Status == RunStatus.Won || run.Status == RunStatus.Lost)
+                    DrawResult();
+            }
+            finally
+            {
+                GUI.matrix = previousMatrix;
+            }
         }
 
         /// <summary>
@@ -136,7 +151,7 @@ namespace LibertyHell.UI
         {
             var effects = run.Inventory.CurrentEffects;
             int stake = effects.GetEffectiveBetCost(SlotSpinController.Stake);
-            GUILayout.BeginArea(new Rect(20, 20, Mathf.Min(450, Screen.width - 40), 125), GUI.skin.box);
+            GUILayout.BeginArea(new Rect(20, 20, Mathf.Min(450, uiWidth - 40), 125), GUI.skin.box);
             GUILayout.Label($"Деньги: {run.Money} / {run.Parameters.MoneyGoal}   Кровь: {run.Blood} / {run.Parameters.MaxBlood}");
             int seconds = Mathf.CeilToInt(run.RemainingSeconds);
             GUILayout.Label($"Время: {seconds / 60:00}:{seconds % 60:00}   Ставка: {stake}");
@@ -144,12 +159,12 @@ namespace LibertyHell.UI
             GUILayout.Label(spinMessage);
             GUILayout.EndArea();
 
-            GUI.Label(new Rect(Screen.width / 2f - 5, Screen.height / 2f - 15, 20, 30), "+");
+            GUI.Label(new Rect(uiWidth / 2f - 5, uiHeight / 2f - 15, 20, 30), "+");
             if (playerInteraction != null && playerInteraction.CurrentTarget != null)
             {
                 var target = playerInteraction.CurrentTarget;
                 string label = target.IsAvailable ? "E — " + target.ActionName : target.ActionName + " (недоступно)";
-                GUI.Label(new Rect(Screen.width / 2f - 100, Screen.height / 2f + 15, 300, 30), label);
+                GUI.Label(new Rect(uiWidth / 2f - 100, uiHeight / 2f + 15, 300, 30), label);
             }
 
         }
@@ -159,10 +174,10 @@ namespace LibertyHell.UI
         /// </summary>
         private void DrawShop()
         {
-            float width = Mathf.Min(520, Screen.width - 40);
-            float height = Mathf.Min(520, Screen.height - 40);
-            float x = (Screen.width - width) / 2f;
-            float y = (Screen.height - height) / 2f;
+            float width = Mathf.Min(520, uiWidth - 40);
+            float height = Mathf.Min(520, uiHeight - 40);
+            float x = (uiWidth - width) / 2f;
+            float y = (uiHeight - height) / 2f;
             GUILayout.BeginArea(new Rect(x, y, width, height), GUI.skin.box);
             GUILayout.Label("Магазин");
             shopScroll = GUILayout.BeginScrollView(shopScroll);
@@ -190,7 +205,7 @@ namespace LibertyHell.UI
         /// </summary>
         private void DrawPause()
         {
-            GUILayout.BeginArea(new Rect(Screen.width / 2f - 150, Screen.height / 2f - 100, 300, 200), GUI.skin.box);
+            GUILayout.BeginArea(new Rect(uiWidth / 2f - 150, uiHeight / 2f - 100, 300, 200), GUI.skin.box);
             GUILayout.Label("Пауза");
             if (GUILayout.Button("Продолжить")) Resume();
             if (GUILayout.Button("Начать заново")) Restart();
@@ -203,7 +218,7 @@ namespace LibertyHell.UI
         /// </summary>
         private void DrawResult()
         {
-            GUILayout.BeginArea(new Rect(Screen.width / 2f - 180, Screen.height / 2f - 100, 360, 200), GUI.skin.box);
+            GUILayout.BeginArea(new Rect(uiWidth / 2f - 180, uiHeight / 2f - 100, 360, 200), GUI.skin.box);
             GUILayout.Label(run.Status == RunStatus.Won ? "Победа" : "Поражение");
             if (!string.IsNullOrEmpty(spinMessage))
                 GUILayout.Label(spinMessage);
