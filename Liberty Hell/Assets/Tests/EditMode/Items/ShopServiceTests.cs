@@ -145,4 +145,29 @@ public class ShopServiceTests
         economy.RejectCommit = false;
         Assert.IsTrue(shop.TryPurchase(ItemId.Lure).Success);
     }
+    [Test]
+    public void RunBloodPackReserveIsAtomicAtTheBetBoundary()
+    {
+        var run = new LibertyHell.GameLoop.RunState(new LibertyHell.GameLoop.RunParameters(32, 50, 100, 1000, 20));
+        int notifications = 0;
+        run.Changed += _ => notifications++;
+        for (int i = 0; i < 2; i++)
+        {
+            Assert.AreEqual(PurchaseCode.BetReserveRequired, run.Shop.CanPurchase(ItemId.BloodPack).Code);
+            Assert.AreEqual(PurchaseCode.BetReserveRequired, run.Shop.TryPurchase(ItemId.BloodPack).Code);
+            Assert.AreEqual(32, run.Money);
+            Assert.AreEqual(50, run.Blood);
+            Assert.AreEqual(0, notifications);
+        }
+        Assert.IsTrue(run.TryAddMoney(3));
+        Assert.IsTrue(run.Shop.TryPurchase(ItemId.BloodPack).Success);
+        Assert.AreEqual(10, run.Money);
+        Assert.AreEqual(85, run.Blood);
+        Assert.AreEqual(2, notifications);
+        Assert.AreEqual(PurchaseCode.InsufficientMoney, run.Shop.TryPurchase(ItemId.BloodPack).Code);
+        Assert.AreEqual(10, run.Money);
+        Assert.AreEqual(85, run.Blood);
+        Assert.AreEqual(2, notifications);
+    }
+
 }

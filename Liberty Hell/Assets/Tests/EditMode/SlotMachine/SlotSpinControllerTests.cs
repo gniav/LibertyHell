@@ -274,4 +274,76 @@ public class SlotSpinControllerTests
         Assert.IsTrue(slot.TryCompleteSpin(newId));
         Assert.AreEqual(25, run.Money);
     }
+    [Test]
+    public void PauseDuringPaymentKeepsPaidSpinUntilResume()
+    {
+        var run = Run(20);
+        using var slot = new SlotSpinController(run, () => Result(15));
+        bool paused = false;
+        run.Changed += state =>
+        {
+            if (state.IsSpinInProgress && !paused)
+            {
+                paused = true;
+                Assert.IsTrue(state.Pause());
+            }
+        };
+        Assert.IsTrue(slot.TryInteract(out long id));
+        Assert.AreEqual(10, run.Money);
+        Assert.AreEqual(RunStatus.Paused, run.Status);
+        Assert.IsTrue(run.IsSpinInProgress);
+        Assert.IsTrue(slot.PendingResult.HasValue);
+        Assert.IsFalse(slot.TryCompleteSpin(id));
+        Assert.IsTrue(run.Resume());
+        Assert.IsTrue(slot.TryCompleteSpin(id));
+        Assert.AreEqual(25, run.Money);
+        Assert.IsFalse(slot.TryCompleteSpin(id));
+    }
+
+    [TestCase(0, RunStatus.Lost)]
+    [TestCase(7, RunStatus.Lost)]
+    [TestCase(10, RunStatus.Running)]
+    [TestCase(11, RunStatus.Running)]
+    public void CompletionChecksNextStakeAfterApplyingPayout(int payout, RunStatus expected)
+    {
+        var run = Run(10, 2, 100);
+        using var slot = new SlotSpinController(run, () => Result(payout, 1));
+        int terminalNotifications = 0;
+        run.Changed += state =>
+        {
+            if (state.Status == RunStatus.Won || state.Status == RunStatus.Lost)
+            {
+                terminalNotifications++;
+                Assert.AreEqual(payout, state.Money);
+                Assert.AreEqual(1, state.Blood);
+                Assert.IsFalse(state.IsSpinInProgress);
+            }
+        };
+        Assert.IsTrue(slot.TryInteract(out long id));
+        Assert.IsTrue(slot.TryCompleteSpin(id));
+        Assert.AreEqual(payout, run.Money);
+        Assert.AreEqual(1, run.Blood);
+        Assert.AreEqual(expected, run.Status);
+        Assert.IsFalse(slot.TryCompleteSpin(id));
+        Assert.AreEqual(expected == RunStatus.Lost ? 1 : 0, terminalNotifications);
+    }
+
+    [Test]
+    public void WinningResultTakesPriorityOverTimeoutAndBlood()
+    {
+        var run = Run(10, 1, 15);
+        using var slot = new SlotSpinController(run, () => Result(15, 1));
+        int terminalNotifications = 0;
+        run.Changed += state => { if (state.Status == RunStatus.Won || state.Status == RunStatus.Lost) terminalNotifications++; };
+        Assert.IsTrue(slot.TryInteract(out long id));
+        run.Tick(20);
+        Assert.IsTrue(slot.TryCompleteSpin(id));
+        Assert.AreEqual(15, run.Money);
+        Assert.AreEqual(0, run.Blood);
+        Assert.AreEqual(0, run.RemainingSeconds);
+        Assert.AreEqual(RunStatus.Won, run.Status);
+        Assert.IsFalse(slot.TryCompleteSpin(id));
+        Assert.AreEqual(1, terminalNotifications);
+    }
+
 }
