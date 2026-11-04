@@ -14,10 +14,34 @@ namespace LibertyHell.SlotMachine
         private float elapsedTime;
         private bool paused;
         private bool spinning;
+        private string firstInitial;
+        private string secondInitial;
+        private string thirdInitial;
         private const string Symbols = "ABXYH";
 
         public bool IsSpinning => spinning;
         public event Action SpinFinished;
+
+        /// <summary>
+        /// Запоминает символы, настроенные в префабе.
+        /// </summary>
+        private void Awake()
+        {
+            if (firstReel != null) firstInitial = firstReel.text;
+            if (secondReel != null) secondInitial = secondReel.text;
+            if (thirdReel != null) thirdInitial = thirdReel.text;
+        }
+
+        /// <summary>
+        /// Возвращает барабаны в начальное состояние.
+        /// </summary>
+        public void ResetDisplay()
+        {
+            CancelSpin();
+            if (firstReel != null) firstReel.text = firstInitial;
+            if (secondReel != null) secondReel.text = secondInitial;
+            if (thirdReel != null) thirdReel.text = thirdInitial;
+        }
 
         /// <summary>
         /// Запускает отображение заранее рассчитанного результата.
