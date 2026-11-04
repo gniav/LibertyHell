@@ -32,6 +32,7 @@ namespace LibertyHell.SceneIntegration
             run = runBootstrap.State;
             run.Changed += OnRunChanged;
             presentation.SpinFinished += OnSpinFinished;
+            gameUI.RunRestarted += presentation.ResetDisplay;
             OnRunChanged(run);
         }
 
@@ -71,6 +72,7 @@ namespace LibertyHell.SceneIntegration
         {
             if (run != null) run.Changed -= OnRunChanged;
             if (presentation != null) presentation.SpinFinished -= OnSpinFinished;
+            if (gameUI != null && presentation != null) gameUI.RunRestarted -= presentation.ResetDisplay;
             Time.timeScale = 1f;
         }
     }

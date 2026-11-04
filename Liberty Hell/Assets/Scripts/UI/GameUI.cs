@@ -21,6 +21,7 @@ namespace LibertyHell.UI
         private Vector2 shopScroll;
 
         public event Action<bool> PauseChanged;
+        public event Action RunRestarted;
         public bool IsShopOpen => shopOpen;
         public bool IsModalOpen => shopOpen || (run != null && run.Status != RunStatus.Running);
 
@@ -266,6 +267,7 @@ namespace LibertyHell.UI
             spinMessage = "";
             purchaseMessage = "";
             runBootstrap.ResetRun();
+            RunRestarted?.Invoke();
             PauseChanged?.Invoke(false);
             UpdateInput();
         }
