@@ -56,7 +56,7 @@ namespace LibertyHell.SlotMachine
                 phase = SlotInteractionState.Ready;
                 return false;
             }
-            if (disposed || run.Status != RunStatus.Running || !run.IsSpinInProgress)
+            if (disposed || (run.Status != RunStatus.Running && run.Status != RunStatus.Paused) || !run.IsSpinInProgress)
             {
                 phase = SlotInteractionState.Ready;
                 if (run.IsSpinInProgress) run.EndSpin();
@@ -69,7 +69,7 @@ namespace LibertyHell.SlotMachine
                 if (spinEffects.GuaranteedXXX)
                 {
                     run.NotifySpinItemChanges();
-                    if (disposed || run.Status != RunStatus.Running || !run.IsSpinInProgress)
+                    if (disposed || (run.Status != RunStatus.Running && run.Status != RunStatus.Paused) || !run.IsSpinInProgress)
                     {
                         phase = SlotInteractionState.Ready;
                         if (run.IsSpinInProgress) run.EndSpin();
@@ -79,7 +79,7 @@ namespace LibertyHell.SlotMachine
                 var result = machine != null ? machine.Spin(spinEffects) : generateResult();
                 if (result.MoneyPayout < 0 || result.BloodLoss < 0)
                     throw new InvalidOperationException("The spin result contains negative effects.");
-                if (disposed || run.Status != RunStatus.Running || !run.IsSpinInProgress)
+                if (disposed || (run.Status != RunStatus.Running && run.Status != RunStatus.Paused) || !run.IsSpinInProgress)
                 {
                     phase = SlotInteractionState.Ready;
                     if (run.IsSpinInProgress) run.EndSpin();

@@ -274,4 +274,30 @@ public class SlotSpinControllerTests
         Assert.IsTrue(slot.TryCompleteSpin(newId));
         Assert.AreEqual(25, run.Money);
     }
+    [Test]
+    public void PauseDuringPaymentKeepsPaidSpinUntilResume()
+    {
+        var run = Run(20);
+        using var slot = new SlotSpinController(run, () => Result(15));
+        bool paused = false;
+        run.Changed += state =>
+        {
+            if (state.IsSpinInProgress && !paused)
+            {
+                paused = true;
+                Assert.IsTrue(state.Pause());
+            }
+        };
+        Assert.IsTrue(slot.TryInteract(out long id));
+        Assert.AreEqual(10, run.Money);
+        Assert.AreEqual(RunStatus.Paused, run.Status);
+        Assert.IsTrue(run.IsSpinInProgress);
+        Assert.IsTrue(slot.PendingResult.HasValue);
+        Assert.IsFalse(slot.TryCompleteSpin(id));
+        Assert.IsTrue(run.Resume());
+        Assert.IsTrue(slot.TryCompleteSpin(id));
+        Assert.AreEqual(25, run.Money);
+        Assert.IsFalse(slot.TryCompleteSpin(id));
+    }
+
 }
