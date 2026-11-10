@@ -109,7 +109,20 @@ namespace LibertyHell.UI
         public void ShowSpinResult(AppliedSpinResult appliedResult)
         {
             SlotResult result = appliedResult.Result;
-            spinMessage = $"{result.First} {result.Second} {result.Third}: +{result.MoneyPayout}, кровь -{appliedResult.BloodLost}";
+            spinMessage = $"{DescribeSymbol(result.First)} | {DescribeSymbol(result.Second)} | {DescribeSymbol(result.Third)}: +{result.MoneyPayout}, кровь -{appliedResult.BloodLost}";
+        }
+
+        private static string DescribeSymbol(SlotSymbol symbol)
+        {
+            switch (symbol)
+            {
+                case SlotSymbol.A: return "Вишня";
+                case SlotSymbol.B: return "Лимон";
+                case SlotSymbol.X: return "Колокольчик";
+                case SlotSymbol.Y: return "Фиолетовая вишня";
+                case SlotSymbol.H: return "Красный лимон";
+                default: return symbol.ToString();
+            }
         }
 
         /// <summary>
@@ -151,12 +164,15 @@ namespace LibertyHell.UI
         {
             var effects = run.Inventory.CurrentEffects;
             int stake = effects.GetEffectiveBetCost(SlotSpinController.Stake);
-            GUILayout.BeginArea(new Rect(20, 20, Mathf.Min(450, uiWidth - 40), 125), GUI.skin.box);
+            float hudWidth = Mathf.Min(450, uiWidth - 40);
+            var messageStyle = new GUIStyle(GUI.skin.label) { wordWrap = true };
+            float messageHeight = messageStyle.CalcHeight(new GUIContent(spinMessage), hudWidth - 20);
+            GUILayout.BeginArea(new Rect(20, 20, hudWidth, 105 + Mathf.Max(20, messageHeight)), GUI.skin.box);
             GUILayout.Label($"Деньги: {run.Money} / {run.Parameters.MoneyGoal}   Кровь: {run.Blood} / {run.Parameters.MaxBlood}");
             int seconds = Mathf.CeilToInt(run.RemainingSeconds);
             GUILayout.Label($"Время: {seconds / 60:00}:{seconds % 60:00}   Ставка: {stake}");
             GUILayout.Label("Активные предметы: " + ActiveItems(effects));
-            GUILayout.Label(spinMessage);
+            GUILayout.Label(spinMessage, messageStyle);
             GUILayout.EndArea();
 
             GUI.Label(new Rect(uiWidth / 2f - 5, uiHeight / 2f - 15, 20, 30), "+");
@@ -221,7 +237,7 @@ namespace LibertyHell.UI
             GUILayout.BeginArea(new Rect(uiWidth / 2f - 180, uiHeight / 2f - 100, 360, 200), GUI.skin.box);
             GUILayout.Label(run.Status == RunStatus.Won ? "Победа" : "Поражение");
             if (!string.IsNullOrEmpty(spinMessage))
-                GUILayout.Label(spinMessage);
+                GUILayout.Label(spinMessage, new GUIStyle(GUI.skin.label) { wordWrap = true });
             if (run.Status == RunStatus.Lost)
                 GUILayout.Label(LossReason());
             if (GUILayout.Button("Начать заново")) Restart();
