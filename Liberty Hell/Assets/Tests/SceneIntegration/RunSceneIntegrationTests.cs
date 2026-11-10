@@ -106,6 +106,84 @@ public class RunSceneIntegrationTests
     }
 
     [UnityTest]
+    public IEnumerator OldSceneMaterialIsReplacedBeforeShowingResults()
+    {
+        EditorSceneManager.OpenScene("Assets/Scenes/RunFoundation.unity");
+        var root = GameObject.Find("Slot Machine Model").transform.Find("drums");
+        var oldMaterial = AssetDatabase.LoadAssetAtPath<Material>("Assets/TeamAssets/Materials/textures drums.mat");
+        Assert.IsNotNull(oldMaterial);
+        foreach (Transform drum in root) drum.GetComponent<Renderer>().sharedMaterial = oldMaterial;
+        yield return new EnterPlayMode();
+        yield return null;
+        var view = Object.FindFirstObjectByType<SlotPresentation>();
+        root = GameObject.Find("Slot Machine Model").transform.Find("drums");
+        foreach (Transform drum in root)
+            Assert.AreEqual("Liberty Hell/Reel Symbols", drum.GetComponent<Renderer>().sharedMaterial.shader.name);
+        var initialRotation = root.Find("Cylinder").localRotation;
+        typeof(SlotPresentation).GetField("spinDuration", BindingFlags.NonPublic | BindingFlags.Instance)
+            .SetValue(view, .2f);
+        Assert.IsTrue(view.StartSpin(new SlotResult(SlotSymbol.Y, SlotSymbol.A, SlotSymbol.A, 0, 0)));
+        float deadline = Time.realtimeSinceStartup + 5f;
+        while (view.IsSpinning && Time.realtimeSinceStartup < deadline) yield return null;
+        Assert.IsFalse(view.IsSpinning);
+        var expected = initialRotation * Quaternion.AngleAxis(185.6f, Vector3.forward);
+        Assert.Less(Quaternion.Angle(expected.normalized, root.Find("Cylinder").localRotation.normalized), .1f);
+        yield return new ExitPlayMode();
+    }
+
+    [UnityTest]
+    public IEnumerator ReelsStopOnResultAndReset()
+    {
+        EditorSceneManager.OpenScene("Assets/Scenes/RunFoundation.unity");
+        yield return new EnterPlayMode();
+        var view = Object.FindFirstObjectByType<SlotPresentation>();
+        var root = GameObject.Find("Slot Machine Model").transform.Find("drums");
+        var drums = new[] { root.Find("Cylinder"), root.Find("Cylinder.001"), root.Find("Cylinder.002") };
+        var initial = new Quaternion[3];
+        for (int i = 0; i < 3; i++)
+        {
+            initial[i] = drums[i].localRotation;
+            Assert.IsNotNull(drums[i].GetComponent<Renderer>().sharedMaterial.mainTexture);
+            Assert.IsNull(view.transform.Find("Reel Image " + (i + 1)));
+        }
+        Assert.IsTrue(view.StartSpin(new SlotResult(SlotSymbol.A, SlotSymbol.B, SlotSymbol.X, 0, 0)));
+        yield return new WaitForSeconds(.15f);
+        Assert.AreNotEqual(initial[0], drums[0].localRotation);
+        var ui = Object.FindFirstObjectByType<GameUI>();
+        ui.Pause();
+        var pausedRotation = drums[0].localRotation;
+        yield return new WaitForSecondsRealtime(.1f);
+        Assert.AreEqual(pausedRotation, drums[0].localRotation);
+        ui.Resume();
+        view.CancelSpin();
+        view.ResetDisplay();
+        Assert.AreEqual(initial[0], drums[0].localRotation);
+        var floorMaterial = GameObject.Find("Floor").GetComponent<Renderer>().sharedMaterial;
+        Assert.IsNotNull(floorMaterial.mainTexture);
+        Assert.AreEqual(new Vector2(8, 8), floorMaterial.GetTextureScale("_BaseMap"));
+        Assert.IsNotNull(GameObject.Find("Back Wall").GetComponent<Renderer>().sharedMaterial.mainTexture);
+        typeof(SlotPresentation).GetField("spinDuration", BindingFlags.NonPublic | BindingFlags.Instance)
+            .SetValue(view, .2f);
+        var resultAngles = new[] { 0f, 302.7f, 244.6f, 185.6f, 128.3f };
+        for (int i = 0; i < 5; i++)
+        {
+            var symbol = (SlotSymbol)i;
+            Assert.IsTrue(view.StartSpin(new SlotResult(symbol, symbol, symbol, 0, 0)));
+            float deadline = Time.realtimeSinceStartup + 5f;
+            while (view.IsSpinning && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.IsFalse(view.IsSpinning);
+            for (int reel = 0; reel < 3; reel++)
+            {
+                var expected = initial[reel] * Quaternion.AngleAxis(resultAngles[i], Vector3.forward);
+                Assert.Less(Quaternion.Angle(expected.normalized, drums[reel].localRotation.normalized), .1f);
+            }
+        }
+        view.ResetDisplay();
+        Assert.AreEqual(initial[0], drums[0].localRotation);
+        yield return new ExitPlayMode();
+    }
+
+    [UnityTest]
     public IEnumerator FailedPresentationStillCompletesThePaidSpin()
     {
         EditorSceneManager.OpenScene("Assets/Scenes/RunFoundation.unity");

@@ -31,6 +31,11 @@ public class GameUITests
                 System.Reflection.BindingFlags.NonPublic).GetValue(ui) as string;
             Assert.AreEqual(10, before - run.Blood);
             StringAssert.Contains("кровь -10", message);
+            StringAssert.Contains("Красный лимон | Красный лимон | Красный лимон", message);
+            ui.ShowSpinResult(new AppliedSpinResult(new SlotResult(SlotSymbol.A, SlotSymbol.A, SlotSymbol.Y, 15, 0), 0));
+            message = typeof(GameUI).GetField("spinMessage", System.Reflection.BindingFlags.Instance |
+                System.Reflection.BindingFlags.NonPublic).GetValue(ui) as string;
+            StringAssert.Contains("Вишня | Вишня | Фиолетовая вишня", message);
         }
         yield return new ExitPlayMode();
     }
