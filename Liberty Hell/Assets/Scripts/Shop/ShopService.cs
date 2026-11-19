@@ -54,13 +54,19 @@ namespace LibertyHell.Shop
         }    
     }
 
-    // Implemented by the authoritative run system, on its serialized game thread.
-    // TryCommit must compare revision and atomically publish both balances and grant:
-    // invoke grant exactly once on success, before notifications; never invoke it on failure.
-    // No reentrant mutation or observer may see a partially committed purchase.
+    /// <summary>
+    /// Проверка правильности данных, подтверждение покупки, обновление баланса.
+    /// Работа магазина.
+    /// </summary>
     public interface IShopEconomy
     {
+        /// <summary>Считывает актуальный файл для экономики.</summary>
         ShopEconomySnapshot Read();
+
+
+        /// <summary>
+        /// Если версия экономики совпадает с expectedRevision, то выдает предмет.
+        /// </summary>
         bool TryCommit(long expectedRevision, int money, int blood, Action grant);
     }
 
