@@ -4,16 +4,25 @@ using LibertyHell.SlotMachine;
 
 namespace LibertyHell.Items
 {
-    // Immutable spin-specific values. Blood-loss fractions round down.
+    /// <summary>
+    /// Неизменяемый снимок эффектов предметов для конкретной крутки.
+    /// </summary>
     public readonly struct ItemEffects
     {
         public bool HasLure { get; }
         public bool HasDiscount { get; }
         public bool HasProtection { get; }
         public bool GuaranteedXXX { get; }
+        
+        /// <summary>Создаёт снимок текущих эффектов предметов.</summary>
         internal ItemEffects(bool lure, bool discount, bool protection, bool guarantee)
-        { HasLure = lure; HasDiscount = discount; HasProtection = protection; GuaranteedXXX = guarantee; }
-
+        {
+            HasLure = lure;
+            HasDiscount = discount;
+            HasProtection = protection;
+            GuaranteedXXX = guarantee;
+        }
+        
         public float GetSymbolWeightMultiplier(SlotSymbol symbol) =>
             HasLure && (symbol == SlotSymbol.X || symbol == SlotSymbol.Y) ? 1.5f : 1f;
         public float GetEffectiveWeight(SlotSymbol symbol, float baseWeight)
