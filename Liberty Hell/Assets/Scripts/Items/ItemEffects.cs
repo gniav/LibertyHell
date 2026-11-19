@@ -23,20 +23,43 @@ namespace LibertyHell.Items
             GuaranteedXXX = guarantee;
         }
         
-        public float GetSymbolWeightMultiplier(SlotSymbol symbol) =>
-            HasLure && (symbol == SlotSymbol.X || symbol == SlotSymbol.Y) ? 1.5f : 1f;
+        /// <summary>
+        /// Возвращает множитель веса символа из слот-машины с учётом приманки.
+        /// При наличии приманки увеличивает вес символов X и Y в 1.5 раза.
+        /// </summary>
+        public float GetSymbolWeightMultiplier(SlotSymbol symbol)
+        {
+            bool isAttractedSymbol = symbol == SlotSymbol.X || symbol == SlotSymbol.Y;
+            return HasLure && isAttractedSymbol ? 1.5f : 1f;
+        }
+        
+        /// <summary>Рассчитывает вес символа после применения эффекта приманки.</summary>
         public float GetEffectiveWeight(SlotSymbol symbol, float baseWeight)
         {
             if (float.IsNaN(baseWeight) || float.IsInfinity(baseWeight) || baseWeight < 0)
+            {
                 throw new ArgumentOutOfRangeException(nameof(baseWeight));
+            }
             return baseWeight * GetSymbolWeightMultiplier(symbol);
         }
+
+        
+        /// <summary>Рассчитывает стоимость ставки после применения скидки, но не ниже единицы.</summary>
         public int GetEffectiveBetCost(int baseCost)
         {
-            if (baseCost < 0) throw new ArgumentOutOfRangeException(nameof(baseCost));
-            long rounded = HasDiscount ? ((long)baseCost * 7 + 5) / 10 : baseCost;
-            return (int)Math.Max(1L, rounded);
+            if (baseCost < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(baseCost));
+            }
+
+            // Умножение выполняется в long, чтобы избежать переполнения int.
+            long discountedCost = HasDiscount
+                ? ((long)baseCost * 7 + 5) / 10
+                : baseCost;
+
+            return (int)Math.Max(1L, discountedCost);
         }
+        
         public int GetEffectiveLosingBloodLoss(int baseLoss)
         {
             if (baseLoss < 0) throw new ArgumentOutOfRangeException(nameof(baseLoss));
