@@ -70,12 +70,17 @@ namespace LibertyHell.Shop
         bool TryCommit(long expectedRevision, int money, int blood, Action grant);
     }
 
+    /// <summary>Проверяет условия покупки и передаёт подтверждение покупки в случае успеха.</summary>
     public sealed class ShopService
     {
         private readonly IShopEconomy economy;
         private readonly ItemInventory inventory;
         private bool busy;
+
         public ItemInventory Inventory => inventory;
+ъ
+        
+        /// <summary>Создаёт магазин с системой экономики и инвентарём игрока.</summary>
         public ShopService(IShopEconomy economy, ItemInventory inventory)
         {
             this.economy = economy ?? throw new ArgumentNullException(nameof(economy));
