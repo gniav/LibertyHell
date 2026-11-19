@@ -132,6 +132,8 @@ namespace LibertyHell.Items
 
             return snapshot;
         }
+
+        /// <summary>Сбрасывает все предметы и историю круток перед новым забегом.</summary>
         public void ResetForNewRun()
         {
             lure = discount = protection = guarantee = false;
