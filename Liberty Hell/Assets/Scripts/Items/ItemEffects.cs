@@ -6,6 +6,7 @@ namespace LibertyHell.Items
 {
     /// <summary>
     /// Неизменяемый снимок эффектов предметов для конкретной крутки.
+    /// Структура хранения эффектов предметов для конкретной крутки.
     /// </summary>
     public readonly struct ItemEffects
     {
@@ -15,6 +16,7 @@ namespace LibertyHell.Items
         public bool GuaranteedXXX { get; }
         
         /// <summary>Создаёт снимок текущих эффектов предметов.</summary>
+        /// <summary>Задает наличие текущих эффектов предметов.</summary>
         internal ItemEffects(bool lure, bool discount, bool protection, bool guarantee)
         {
             HasLure = lure;
@@ -44,7 +46,10 @@ namespace LibertyHell.Items
         }
 
         
-        /// <summary>Рассчитывает стоимость ставки после применения скидки, но не ниже единицы.</summary>
+        /// <summary>
+        /// Рассчитывает стоимость ставки после применения скидки, но не ниже единицы.
+        /// (округление в большую сторону).
+        /// </summary>
         public int GetEffectiveBetCost(int baseCost)
         {
             if (baseCost < 0)
@@ -59,7 +64,7 @@ namespace LibertyHell.Items
 
             return (int)Math.Max(1L, discountedCost);
         }
-        
+
         public int GetEffectiveLosingBloodLoss(int baseLoss)
         {
             if (baseLoss < 0) throw new ArgumentOutOfRangeException(nameof(baseLoss));
