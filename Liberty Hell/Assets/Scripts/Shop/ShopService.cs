@@ -3,15 +3,33 @@ using LibertyHell.Items;
 
 namespace LibertyHell.Shop
 {
-    public enum PurchaseCode { Success, UnknownItem, InsufficientBlood, InsufficientMoney,
-        AlreadyPurchased, GuaranteePending, BloodFull, BetReserveRequired, InvalidState }
+    /// <summary>Возможные результаты покупки.</summary>
+    public enum PurchaseCode
+    {
+        Success,
+        UnknownItem,
+        InsufficientBlood,
+        InsufficientMoney,
+        AlreadyPurchased,
+        GuaranteePending,
+        BloodFull,
+        BetReserveRequired,
+        InvalidState
+    }
 
+    /// <summary>Содержит код результата покупки, сообщение и признак успеха.</summary>
     public readonly struct PurchaseResult
     {
         public PurchaseCode Code { get; }
         public string Message { get; }
         public bool Success => Code == PurchaseCode.Success;
-        internal PurchaseResult(PurchaseCode code, string message) { Code = code; Message = message; }
+
+        /// <summary>Регулирует результат покупки.</summary>
+        internal PurchaseResult(PurchaseCode code, string message)
+        {
+            Code = code;
+            Message = message;
+        }
     }
 
     public readonly struct ShopEconomySnapshot
