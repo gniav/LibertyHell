@@ -117,15 +117,19 @@ namespace LibertyHell.Items
             }
         }
 
-        // Call only after the authoritative system has accepted this exact spin.
-        // Repeated confirmation returns the original snapshot without consuming another guarantee.
-        public ItemEffects ConfirmSpinStarted(Guid spinId)
+        /// <summary>
+        /// Фиксирует крутки в начатом забеге, контролирует, чтобы они не повторялись.
+        /// </summary>
+                public ItemEffects ConfirmSpinStarted(Guid spinId)
         {
+
             if (spinId == Guid.Empty) throw new ArgumentException("A unique spin ID is required.", nameof(spinId));
             if (spins.TryGetValue(spinId, out var existing)) return existing;
+
             var snapshot = CurrentEffects;
             spins.Add(spinId, snapshot);
             guarantee = false;
+
             return snapshot;
         }
         public void ResetForNewRun()
