@@ -75,15 +75,35 @@ namespace LibertyHell.Items
         }
     }
 
+
+    /// <summary>Класс инвернторя и эффектов для начатых круток.</summary>
     public sealed class ItemInventory
     {
-        private bool lure, discount, protection, guarantee;
+        private bool lure;
+        private bool discount;
+        private bool protection;
+        private bool guarantee;
+
         private readonly Dictionary<Guid, ItemEffects> spins = new Dictionary<Guid, ItemEffects>();
+
         public bool HasPendingGuarantee => guarantee;
         public ItemEffects CurrentEffects => new ItemEffects(lure, discount, protection, guarantee);
 
-        internal bool AlreadyOwned(ItemId id) => id == ItemId.Lure ? lure :
-            id == ItemId.Discount ? discount : id == ItemId.Protection && protection;
+        /// <summary>Проверяет, есть ли у игрока указанный предмет.</summary>
+        internal bool AlreadyOwned(ItemId id)
+        {
+            switch (id)
+            {
+                case ItemId.Lure:
+                    return lure;
+                case ItemId.Discount:
+                    return discount;
+                case ItemId.Protection:
+                    return protection;
+                default:
+                    return false;
+            }
+        }
         internal void Grant(ItemId id)
         {
             switch (id)
