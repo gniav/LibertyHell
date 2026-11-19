@@ -32,6 +32,7 @@ namespace LibertyHell.Shop
         }
     }
 
+/// <summary>Структура для хранения важных параметрров экономики игры.</summary>
     public readonly struct ShopEconomySnapshot
     {
         public long Revision { get; }
@@ -40,8 +41,17 @@ namespace LibertyHell.Shop
         public int MaxBlood { get; }
         public int BaseBetCost { get; }
         public bool CanShop { get; }
+
+        /// <summary>Задает в переменные текущие значения параметров экономики.</summary>
         public ShopEconomySnapshot(long revision, int money, int blood, int maxBlood, int baseBetCost, bool canShop)
-        { Revision = revision; Money = money; Blood = blood; MaxBlood = maxBlood; BaseBetCost = baseBetCost; CanShop = canShop; }
+        {
+            Revision = revision;
+            Money = money;
+            Blood = blood;
+            MaxBlood = maxBlood;
+            BaseBetCost = baseBetCost;
+            CanShop = canShop;
+        }    
     }
 
     // Implemented by the authoritative run system, on its serialized game thread.
