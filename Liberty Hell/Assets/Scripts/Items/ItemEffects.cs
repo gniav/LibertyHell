@@ -5,7 +5,6 @@ using LibertyHell.SlotMachine;
 namespace LibertyHell.Items
 {
     /// <summary>
-    /// Неизменяемый снимок эффектов предметов для конкретной крутки.
     /// Структура хранения эффектов предметов для конкретной крутки.
     /// </summary>
     public readonly struct ItemEffects
@@ -15,7 +14,6 @@ namespace LibertyHell.Items
         public bool HasProtection { get; }
         public bool GuaranteedXXX { get; }
         
-        /// <summary>Создаёт снимок текущих эффектов предметов.</summary>
         /// <summary>Задает наличие текущих эффектов предметов.</summary>
         internal ItemEffects(bool lure, bool discount, bool protection, bool guarantee)
         {
@@ -65,9 +63,14 @@ namespace LibertyHell.Items
             return (int)Math.Max(1L, discountedCost);
         }
 
+        /// <summary>Сокращает потерю крови при наличии защиты.</summary>
         public int GetEffectiveLosingBloodLoss(int baseLoss)
         {
-            if (baseLoss < 0) throw new ArgumentOutOfRangeException(nameof(baseLoss));
+            if (baseLoss < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(baseLoss));
+            }
+
             return HasProtection ? baseLoss / 2 : baseLoss;
         }
     }
