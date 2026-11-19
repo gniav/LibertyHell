@@ -104,6 +104,8 @@ namespace LibertyHell.Items
                     return false;
             }
         }
+
+        /// <summary>Добавляет предмет в инвентарь игрока при гарантии.</summary>
         internal void Grant(ItemId id)
         {
             switch (id)
