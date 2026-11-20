@@ -24,7 +24,7 @@ namespace LibertyHell.Shop
         public string Message { get; }
         public bool Success => Code == PurchaseCode.Success;
 
-        /// <summary>Регулирует результат покупки.</summary>
+        /// <summary>Регулирует результат покупки, добавляет код и сообщение.</summary>
         internal PurchaseResult(PurchaseCode code, string message)
         {
             Code = code;
