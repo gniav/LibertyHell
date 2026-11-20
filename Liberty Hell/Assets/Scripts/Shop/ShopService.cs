@@ -175,6 +175,7 @@ namespace LibertyHell.Shop
             return Result(PurchaseCode.Success);
         }
 
+        /// <summary>Конвертирует коды ошибок в читаемые сообщения(== трактовки) ошибок.</summary>
         private static PurchaseResult Result(PurchaseCode code)
         {
             switch (code)
