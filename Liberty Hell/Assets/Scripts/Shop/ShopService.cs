@@ -55,8 +55,6 @@ namespace LibertyHell.Shop
     }
 
     /// <summary>
-    /// Проверка правильности данных, подтверждение покупки, обновление баланса.
-    /// Работа магазина.
     /// Проверка правильности данных со снапшота, подтверждение покупки, обновление баланса.
     /// </summary>
     public interface IShopEconomy
@@ -79,9 +77,8 @@ namespace LibertyHell.Shop
         private bool busy;
 
         public ItemInventory Inventory => inventory;
-ъ
+
         
-        /// <summary>Создаёт магазин с системой экономики и инвентарём игрока.</summary>
         /// <summary>Проверка на наличие инвентаря и экономики.</summary>
         public ShopService(IShopEconomy economy, ItemInventory inventory)
         {
@@ -89,25 +86,57 @@ namespace LibertyHell.Shop
             this.inventory = inventory ?? throw new ArgumentNullException(nameof(inventory));
         }
 
-        public PurchaseResult CanPurchase(ItemId id) => busy ? Result(PurchaseCode.InvalidState) : Check(id, economy.Read());
+        /// <summary>Проверяет, не проводится покупка уже и есть ли возможность купить именно этот предмет.</summary>
+        public PurchaseResult CanPurchase(ItemId id)
+        {
+            if (busy)
+            {
+                return Result(PurchaseCode.InvalidState);
+            }
+            return Check(id, economy.Read());
+        }
 
+        /// <summary>Совершает покупку в нужной валюте(кровь или деньги).
+        /// Контролирует восстановление крови на максимум 35 единиц.
+        /// Применяет новые значения статов к игроку.</summary>
         public PurchaseResult TryPurchase(ItemId id)
         {
             if (busy) return Result(PurchaseCode.InvalidState);
             busy = true;
             try
             {
-                var state = economy.Read();
-                var check = Check(id, state);
-                if (!check.Success) return check;
-                var item = ItemDefinition.Find(id);
-                int money = state.Money, blood = state.Blood;
-                if (item.Currency == ItemCurrency.Blood) blood -= item.Price;
-                else { money -= item.Price; blood += Math.Min(35, state.MaxBlood - blood); }
-                return economy.TryCommit(state.Revision, money, blood, () => inventory.Grant(id))
-                    ? Result(PurchaseCode.Success) : Result(PurchaseCode.InvalidState);
+                ShopEconomySnapshot state = economy.Read();
+                PurchaseResult checkResult = Check(id, state);
+                if (!checkResult.Success) return checkResult;
+                ItemDefinition item = ItemDefinition.Find(id);
+                int newMoney = state.Money;
+                int newBlood = state.Blood;
+
+                if (item.Currency == ItemCurrency.Blood)
+                {
+                    newBlood -= item.Price;
+                }
+                else
+                {
+                    newMoney -= item.Price;
+                    newBlood += Math.Min(35, state.MaxBlood - newBlood);
+                }
+
+                bool committed = economy.TryCommit(
+                    state.Revision,
+                    newMoney,
+                    newBlood,
+                    () => inventory.Grant(id));
+
+                return committed
+                    ? Result(PurchaseCode.Success)
+                    : Result(PurchaseCode.InvalidState);
             }
-            finally { busy = false; }
+            finally
+            {
+                // Даже при раннем выходе или исключении магазин снова становится доступен.
+                busy = false;
+            }
         }
 
         private PurchaseResult Check(ItemId id, ShopEconomySnapshot state)
