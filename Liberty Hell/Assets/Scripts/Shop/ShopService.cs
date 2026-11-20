@@ -138,22 +138,40 @@ namespace LibertyHell.Shop
                 busy = false;
             }
         }
+    
 
+        /// <summary>
+        /// Проверка всех сценариев покупки предмета.
+        /// </summary>
         private PurchaseResult Check(ItemId id, ShopEconomySnapshot state)
         {
             var item = ItemDefinition.Find(id);
             if (item == null) return Result(PurchaseCode.UnknownItem);
-            if (!state.CanShop || state.Money < 0 || state.MaxBlood <= 0 || state.Blood <= 0 ||
-                state.Blood > state.MaxBlood || state.BaseBetCost <= 0)
+
+            bool invalidEconomyState = !state.CanShop
+                || state.Money < 0
+                || state.MaxBlood <= 0
+                || state.Blood <= 0
+                || state.Blood > state.MaxBlood
+                || state.BaseBetCost <= 0;
+
+            if (invalidEconomyState)
+            {
                 return Result(PurchaseCode.InvalidState);
+            }
             if (inventory.AlreadyOwned(id)) return Result(PurchaseCode.AlreadyPurchased);
             if (id == ItemId.Guarantee && inventory.HasPendingGuarantee) return Result(PurchaseCode.GuaranteePending);
             if (item.Currency == ItemCurrency.Blood)
                 return Result(state.Blood > item.Price ? PurchaseCode.Success : PurchaseCode.InsufficientBlood);
             if (state.Blood == state.MaxBlood) return Result(PurchaseCode.BloodFull);
             if (state.Money < item.Price) return Result(PurchaseCode.InsufficientMoney);
-            if (state.Money - item.Price < inventory.CurrentEffects.GetEffectiveBetCost(state.BaseBetCost))
+            
+            int betCost = inventory.CurrentEffects.GetEffectiveBetCost(state.BaseBetCost);
+            if (state.Money - item.Price < betCost)
+            {
                 return Result(PurchaseCode.BetReserveRequired);
+            }
+
             return Result(PurchaseCode.Success);
         }
 
