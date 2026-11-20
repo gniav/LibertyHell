@@ -57,6 +57,7 @@ namespace LibertyHell.Shop
     /// <summary>
     /// Проверка правильности данных, подтверждение покупки, обновление баланса.
     /// Работа магазина.
+    /// Проверка правильности данных со снапшота, подтверждение покупки, обновление баланса.
     /// </summary>
     public interface IShopEconomy
     {
@@ -81,6 +82,7 @@ namespace LibertyHell.Shop
 ъ
         
         /// <summary>Создаёт магазин с системой экономики и инвентарём игрока.</summary>
+        /// <summary>Проверка на наличие инвентаря и экономики.</summary>
         public ShopService(IShopEconomy economy, ItemInventory inventory)
         {
             this.economy = economy ?? throw new ArgumentNullException(nameof(economy));
