@@ -7,7 +7,9 @@ namespace LibertyHell.GameLoop
 {
     public enum RunStatus { Running, Paused, Won, Lost }
 
-    // Plain game data, independent of scene objects and UI.
+    /// <summary>
+    /// Хранит основные данные игровой сессии независимо от объектов сцены и интерфейса.
+    /// </summary>
     public sealed class RunState : IShopEconomy
     {
         public int Money { get; private set; }
@@ -25,19 +27,42 @@ namespace LibertyHell.GameLoop
         private bool committingPurchase;
         private bool paidSpin;
 
+
+        /// <summary>
+        /// Создаёт состояние игровой сессии с заданными параметрами.
+        /// </summary>
+        /// <param name="parameters">Параметры новой игровой сессии.</param>
         public RunState(RunParameters parameters)
         {
             Shop = new ShopService(this, Inventory);
             Reset(parameters);
         }
-
+        /// <summary>
+        /// Увеличивает версию состояния и уведомляет подписчиков об изменениях.
+        /// </summary>
         private void Publish() { revision++; Changed?.Invoke(this); }
+        
+        /// <summary>
+        /// Уведомляет подписчиков об изменении предметов во время вращения.
+        /// </summary>
         internal void NotifySpinItemChanges() => Publish();
 
+        /// <summary>
+        /// Возвращает снимок текущего состояния экономики для магазина.
+        /// </summary>
+        /// <returns>Снимок состояния экономики.</returns>
         ShopEconomySnapshot IShopEconomy.Read() => new ShopEconomySnapshot(revision, Money, Blood,
             Parameters.MaxBlood, SlotSpinController.Stake, Status == RunStatus.Running && !IsSpinInProgress && !committingPurchase);
-
-        bool IShopEconomy.TryCommit(long expectedRevision, int money, int blood, Action grant)
+ 
+        /// <summary>
+        /// Проверяет возможность покупки и применяет её, если состояние экономики не изменилось.
+        /// </summary>
+        /// <param name="expectedRevision">Ожидаемая версия состояния.</param>
+        /// <param name="money">Количество денег после покупки.</param>
+        /// <param name="blood">Количество крови после покупки.</param>
+        /// <param name="grant">Действие, выдающее купленный предмет.</param>
+        /// <returns>True, если покупка успешно выполнена.</returns> 
+         bool IShopEconomy.TryCommit(long expectedRevision, int money, int blood, Action grant)
         {
             if (committingPurchase || expectedRevision != revision || Status != RunStatus.Running ||
                 IsSpinInProgress || money < 0 || blood <= 0 || blood > Parameters.MaxBlood || grant == null)
@@ -48,7 +73,11 @@ namespace LibertyHell.GameLoop
             return true;
         }
 
-        // Resource mutations and new spins are accepted only while Running.
+        /// <summary>
+        /// Проверяет, можно ли потратить указанное количество денег.
+        /// </summary>
+        /// <param name="amount">Количество денег для траты.</param>
+        /// <returns>True, если денег достаточно и игровая сессия активна.</returns>
         public bool CanSpendMoney(int amount)
         {
             if (amount <= 0)
@@ -56,6 +85,12 @@ namespace LibertyHell.GameLoop
             return !committingPurchase && Status == RunStatus.Running && amount <= Money;
         }
 
+
+        /// <summary>
+        /// Списывает указанное количество денег, если это возможно.
+        /// </summary>
+        /// <param name="amount">Количество денег для списания.</param>
+        /// <returns>True, если деньги успешно списаны.</returns>
         public bool TrySpendMoney(int amount)
         {
             if (!CanSpendMoney(amount))
@@ -67,6 +102,12 @@ namespace LibertyHell.GameLoop
             return true;
         }
 
+
+        /// <summary>
+        /// Добавляет деньги, если сессия находится в активном состоянии и не происходит переполнения.
+        /// </summary>
+        /// <param name="amount">Количество добавляемых денег.</param>
+        /// <returns>True, если деньги успешно добавлены.</returns>
         public bool TryAddMoney(int amount)
         {
             if (amount <= 0)
@@ -79,7 +120,11 @@ namespace LibertyHell.GameLoop
             return true;
         }
 
-        // Payment and the deferred balance check become visible together.
+        /// <summary>
+        /// Начинает платное вращение и списывает ставку.
+        /// </summary>
+        /// <param name="stake">Размер ставки.</param>
+        /// <returns>True, если вращение успешно начато.</returns>
         public bool TryBeginPaidSpin(int stake)
         {
             if (stake <= 0) throw new ArgumentOutOfRangeException(nameof(stake));
@@ -91,7 +136,13 @@ namespace LibertyHell.GameLoop
             return true;
         }
 
-        // Apply all effects before deciding the outcome or notifying observers.
+        /// <summary>
+        /// Завершает платное вращение, начисляет выигрыш и применяет потерю крови.
+        /// </summary>
+        /// <param name="payout">Количество денег, полученных за вращение.</param>
+        /// <param name="bloodLoss">Количество потерянной крови.</param>
+        /// <param name="nextStake">Размер следующей ставки.</param>
+        /// <returns>True, если вращение успешно завершено.</returns>
         public bool TryCompletePaidSpin(int payout, int bloodLoss, int nextStake)
         {
             if (payout < 0) throw new ArgumentOutOfRangeException(nameof(payout));
@@ -112,7 +163,10 @@ namespace LibertyHell.GameLoop
             return true;
         }
 
-        // Begin before paying; apply any payout before EndSpin checks the balance.
+        /// <summary>
+        /// Начинает обычное вращение без предварительного списания денег.
+        /// </summary>
+        /// <returns>True, если вращение успешно начато.</returns>
         public bool BeginSpin()
         {
             if (committingPurchase || Status != RunStatus.Running || IsSpinInProgress)
@@ -122,8 +176,10 @@ namespace LibertyHell.GameLoop
             return true;
         }
 
-        // Also use this when cancelling, after applying any refund while Running.
-        // If paused, the balance is checked on Resume. Terminal states clear the spin.
+        /// <summary>
+        /// Завершает текущее вращение и проверяет условия окончания сессии.
+        /// </summary>
+        /// <returns>True, если вращение успешно завершено.</returns>
         public bool EndSpin()
         {
             if (committingPurchase || !IsSpinInProgress)
@@ -135,6 +191,10 @@ namespace LibertyHell.GameLoop
             return true;
         }
 
+        /// <summary>
+        /// Приостанавливает игровую сессию.
+        /// </summary>
+        /// <returns>True, если игровая сессия успешно приостановлена.</returns>
         public bool Pause()
         {
             if (committingPurchase || Status != RunStatus.Running) return false;
@@ -143,6 +203,10 @@ namespace LibertyHell.GameLoop
             return true;
         }
 
+        /// <summary>
+        /// Возобновляет игровую сессию и проверяет условия её завершения.
+        /// </summary>
+        /// <returns>True, если игровая сессия успешно возобновлена.</returns>
         public bool Resume()
         {
             if (committingPurchase || Status != RunStatus.Paused) return false;
@@ -152,6 +216,11 @@ namespace LibertyHell.GameLoop
             return true;
         }
 
+        /// <summary>
+        /// Уменьшает количество крови и проверяет условия окончания игровой сессии.
+        /// </summary>
+        /// <param name="amount">Количество теряемой крови.</param>
+        /// <returns>True, если урон успешно применён.</returns>
         public bool DamageBlood(int amount)
         {
             if (amount <= 0) throw new ArgumentOutOfRangeException(nameof(amount));
@@ -162,6 +231,11 @@ namespace LibertyHell.GameLoop
             return true;
         }
 
+        /// <summary>
+        /// Восстанавливает кровь, не превышая её максимальное количество.
+        /// </summary>
+        /// <param name="amount">Количество восстанавливаемой крови.</param>
+        /// <returns>True, если восстановление выполнено.</returns>
         public bool RestoreBlood(int amount)
         {
             if (amount <= 0) throw new ArgumentOutOfRangeException(nameof(amount));
@@ -171,6 +245,10 @@ namespace LibertyHell.GameLoop
             return true;
         }
 
+        /// <summary>
+        /// Обновляет таймер игровой сессии и выполняет автоматическое восстановление крови.
+        /// </summary>
+        /// <param name="deltaTime">Время, прошедшее с предыдущего обновления.</param>
         public void Tick(float deltaTime)
         {
             if (float.IsNaN(deltaTime) || float.IsInfinity(deltaTime) || deltaTime < 0)
@@ -191,7 +269,9 @@ namespace LibertyHell.GameLoop
             Publish();
         }
 
-        // Exhausted blood/time takes precedence over the goal, then zero money.
+        /// <summary>
+        /// Проверяет условия победы и поражения и обновляет статус игровой сессии.
+        /// </summary>
         private void EvaluateOutcome()
         {
             if (Status != RunStatus.Running) return;
@@ -202,10 +282,13 @@ namespace LibertyHell.GameLoop
             if (Status == RunStatus.Lost || Status == RunStatus.Won) IsSpinInProgress = false;
         }
 
+         /// <summary>
+        /// Сбрасывает состояние игровой сессии и применяет новые параметры.
+        /// </summary>
+        /// <param name="parameters">Параметры новой сессии.</param>
         public void Reset(RunParameters parameters)
         {
             if (committingPurchase) throw new InvalidOperationException("Cannot reset during a purchase.");
-            // A default struct bypasses its constructor, so validate here too.
             parameters = new RunParameters(parameters.StartingMoney, parameters.StartingBlood,
                 parameters.MaxBlood, parameters.MoneyGoal, parameters.DurationSeconds,
                 parameters.BloodRegenAmount, parameters.BloodRegenIntervalSeconds);
