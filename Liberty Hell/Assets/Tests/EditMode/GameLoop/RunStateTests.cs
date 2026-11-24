@@ -4,6 +4,7 @@ using NUnit.Framework;
 
 public class RunStateTests
 {
+    // Проверяем применение всех эффектов платного вращения перед определением результата.
     [Test]
     public void PaidSpinAppliesAllEffectsBeforeChoosingOutcome()
     {
@@ -19,6 +20,7 @@ public class RunStateTests
         Assert.IsFalse(state.TryCompletePaidSpin(50, 0, 10));
     }
 
+    // Проверяем наличие денег для платного вращения и проверку следующей ставки.
     [Test]
     public void PaidSpinRequiresFundsAndChecksNextStakeAfterResult()
     {
@@ -32,6 +34,7 @@ public class RunStateTests
         Assert.IsFalse(state.IsSpinInProgress);
     }
 
+    // Проверяем обработку окончания времени и переполнения при платном вращении.
     [Test]
     public void PaidSpinDefersTimeoutAndRejectsOverflow()
     {
@@ -47,7 +50,8 @@ public class RunStateTests
         Assert.AreEqual(10, state.Money);
         Assert.IsTrue(state.IsSpinInProgress);
     }
-
+    
+    // Проверяем, что покупка применяется целиком, а устаревшее состояние отклоняется.
     [Test]
     public void PurchaseIsAtomicAndResetClearsInventory()
     {
@@ -67,6 +71,7 @@ public class RunStateTests
         Assert.IsFalse(economy.TryCommit(old.Revision, 1, 1, () => Assert.Fail("stale grant")));
     }
 
+    // Проверяем очистку предметов игровой сессии после сброса.
     [Test]
     public void ResetClearsRunItems()
     {
@@ -77,6 +82,7 @@ public class RunStateTests
         Assert.IsFalse(state.Inventory.HasPendingGuarantee);
     }
 
+    // Проверяем начальные значения ресурсов, времени и цели игровой сессии.
     [Test]
     public void InitializesFromSnapshot()
     {
@@ -89,6 +95,7 @@ public class RunStateTests
         Assert.AreEqual(RunStatus.Running, state.Status);
     }
 
+    // Проверяем обновление всех значений состояния и однократное уведомление после сброса.
     [Test]
     public void ResetReplacesSnapshotAndNotifiesOnceAfterAllValuesAreSet()
     {
@@ -107,6 +114,7 @@ public class RunStateTests
         Assert.AreEqual(1, calls);
     }
 
+     // Проверяем, что уведомление об изменении денег происходит только после успешного списания.
     [Test]
     public void SpendingMoneyNotifiesOnlyAfterSuccessfulPayment()
     {
@@ -121,6 +129,7 @@ public class RunStateTests
         Assert.AreEqual(1, calls);
     }
 
+    // Проверяем, что некорректные параметры не изменяют текущее состояние.
     [Test]
     public void InvalidParametersCannotResetState()
     {
@@ -130,6 +139,7 @@ public class RunStateTests
         Assert.AreEqual(20f, state.RemainingSeconds);
     }
 
+     // Проверяем списание денег во время вращения и завершение вращения.
     [Test]
     public void SpinDefersMoneyLossUntilResultOrCancellation()
     {
@@ -151,6 +161,7 @@ public class RunStateTests
         Assert.IsFalse(state.Resume());
     }
 
+    // Проверяем ограничения ресурсов и невозможность изменения завершённой игровой сессии.
     [Test]
     public void ResourcesAreBoundedAndTerminalStatesCannotBeChanged()
     {
@@ -167,6 +178,7 @@ public class RunStateTests
         Assert.IsFalse(state.Pause());
     }
 
+    // Проверяем приоритет победы и поражения при достижении начальных условий.
     [Test]
     public void GoalAndInitialConditionsHaveDeterministicPrecedence()
     {
@@ -180,6 +192,7 @@ public class RunStateTests
         Assert.AreEqual(RunStatus.Lost, state.Status);
     }
 
+     // Проверяем сохранение таймера и частичного восстановления крови при паузе.
     [Test]
     public void PausePreservesTimerAndPartialRegeneration()
     {
@@ -195,6 +208,7 @@ public class RunStateTests
         Assert.AreEqual(25, state.RemainingSeconds);
     }
 
+    // Проверяем, что результат не зависит от размера интервала обновления.
     [Test]
     public void MultipleIntervalsAndSmallTicksProduceSameResult()
     {
@@ -210,6 +224,7 @@ public class RunStateTests
         Assert.AreEqual(10, large.Blood);
     }
 
+    // Проверяем завершение игровой сессии по таймеру во время вращения и очистку прогресса после сброса.
     [Test]
     public void TimeoutDuringSpinStopsChangesAndResetClearsProgress()
     {
@@ -235,6 +250,7 @@ public class RunStateTests
         Assert.AreEqual(4, state.RemainingSeconds);
     }
 
+    // Проверяем отклонение некорректных значений времени и параметров восстановления крови.
     [Test]
     public void TickAndRegenParametersRejectInvalidValues()
     {
@@ -248,6 +264,7 @@ public class RunStateTests
         Assert.Throws<ArgumentOutOfRangeException>(() => new RunParameters(1, 1, 1, 10, 20, -1, 5));
     }
 
+    // Проверяем приоритет потери крови во время вращения и сброс состояния вращения.
     [Test]
     public void BloodLossDuringSpinTakesPriorityAndResetClearsSpin()
     {
@@ -265,6 +282,7 @@ public class RunStateTests
         Assert.IsTrue(state.BeginSpin());
     }
 
+     // Проверяем завершение вращения после победы и невозможность повторного завершения.
     [Test]
     public void WinningPayoutEndsSpinAndCannotFinishTwice()
     {
@@ -278,6 +296,7 @@ public class RunStateTests
         Assert.IsFalse(state.CanSpendMoney(1));
     }
 
+    // Проверяем проверку достаточности денег после отмены вращения на паузе.
     [Test]
     public void PausedCancellationChecksMoneyOnResume()
     {

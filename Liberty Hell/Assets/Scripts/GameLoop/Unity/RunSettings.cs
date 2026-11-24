@@ -2,6 +2,7 @@ using UnityEngine;
 
 namespace LibertyHell.GameLoop
 {
+    /// <summary>Хранит настраиваемые начальные, целевые и др. параметры нового игрового забега.</summary>
     [CreateAssetMenu(menuName = "Liberty Hell/Run Settings", fileName = "RunSettings")]
     public sealed class RunSettings : ScriptableObject
     {
@@ -13,9 +14,11 @@ namespace LibertyHell.GameLoop
         [SerializeField, Min(0)] private int bloodRegenAmount = 1;
         [SerializeField, Min(0.01f)] private float bloodRegenIntervalSeconds = 5f;
 
+        /// <summary>Создаёт параметры из настроек для экономики игрового забега.</summary>
         public RunParameters CreateParameters() => new RunParameters(
             startingMoney, startingBlood, maxBlood, moneyGoal, durationSeconds, bloodRegenAmount, bloodRegenIntervalSeconds);
 
+        /// <summary>Исправляет некорректные значения настроек.</summary>
         private void OnValidate()
         {
             maxBlood = Mathf.Max(1, maxBlood);
